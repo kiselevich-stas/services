@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import { ref, watch } from 'vue'
 import UiInput from '../../../components/ui/UiInput.vue'
-import UiInputMasked from "../../../components/ui/UiInputMasked.vue";
+import UiInputMasked from '../../../components/ui/UiInputMasked.vue'
 import UiTextarea from '../../../components/ui/UiTextarea.vue'
-import {useZodForm} from '../../../shared/composables/useZodForm'
-import {profileSchema} from '../schema/profile.schema'
-import type {Profile, ProfileUpdatePayload} from '../types'
+import { useZodForm } from '../../../shared/composables/useZodForm'
+import { profileSchema } from '../schema/profile.schema'
+import type { Profile, ProfileUpdatePayload } from '../types'
 
 type ProfileFormValues = {
   email: string
@@ -17,12 +17,16 @@ type ProfileFormValues = {
   avatarUrl: string | null
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   profile: Profile | null
   loading?: boolean
   successMessage?: string
   submitError?: string
-}>()
+}>(), {
+  loading: false,
+  successMessage: '',
+  submitError: '',
+})
 
 const emit = defineEmits<{
   save: [payload: ProfileUpdatePayload]
@@ -94,20 +98,43 @@ watch(
     (profile) => {
       syncForm(profile)
     },
-    {immediate: true},
+    { immediate: true },
 )
 </script>
 
 <template>
   <section class="panel profile-form-card">
     <div class="panel__header">
-      <h2 class="panel__title">Мой профиль</h2>
+      <h2 class="panel__title">
+        <span
+            v-if="loading"
+            class="profile-form-card__skeleton profile-form-card__skeleton--title"
+        />
+        <template v-else>
+          Мой профиль
+        </template>
+      </h2>
+
       <p class="panel__text">
-        Здесь можно редактировать личную информацию. Email пока доступен только для просмотра.
+        <span
+            v-if="loading"
+            class="profile-form-card__skeleton profile-form-card__skeleton--text profile-form-card__skeleton--text-wide"
+        />
+        <span
+            v-if="loading"
+            class="profile-form-card__skeleton profile-form-card__skeleton--text"
+        />
+        <template v-else>
+          Здесь можно редактировать личную информацию. Email пока доступен только для просмотра.
+        </template>
       </p>
     </div>
 
-    <form class="profile-form-card__form" @submit.prevent="handleSubmit">
+    <form
+        v-if="!loading"
+        class="profile-form-card__form"
+        @submit.prevent="handleSubmit"
+    >
       <div class="profile-form-card__grid">
         <UiInput
             v-model="form.firstName"
@@ -184,14 +211,59 @@ watch(
         </button>
       </div>
 
-      <p v-if="successMessage" class="profile-form-card__message profile-form-card__message--success">
+      <p
+          v-if="successMessage"
+          class="profile-form-card__message profile-form-card__message--success"
+      >
         {{ successMessage }}
       </p>
 
-      <p v-if="submitError" class="profile-form-card__message profile-form-card__message--error">
+      <p
+          v-if="submitError"
+          class="profile-form-card__message profile-form-card__message--error"
+      >
         {{ submitError }}
       </p>
     </form>
+
+    <div v-else class="profile-form-card__form">
+      <div class="profile-form-card__grid">
+        <div class="profile-form-card__field-skeleton">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--input" />
+        </div>
+
+        <div class="profile-form-card__field-skeleton">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--input" />
+        </div>
+
+        <div class="profile-form-card__field-skeleton profile-form-card__full">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--input" />
+        </div>
+
+        <div class="profile-form-card__field-skeleton">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--input" />
+        </div>
+
+        <div class="profile-form-card__field-skeleton">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--input" />
+        </div>
+
+        <div class="profile-form-card__field-skeleton profile-form-card__full">
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--label" />
+          <span class="profile-form-card__skeleton profile-form-card__skeleton--textarea" />
+        </div>
+      </div>
+
+      <div class="profile-form-card__actions">
+        <span class="profile-form-card__skeleton profile-form-card__skeleton--action-button profile-form-card__skeleton--action-button-ghost" />
+        <span class="profile-form-card__skeleton profile-form-card__skeleton--action-button profile-form-card__skeleton--action-button-primary" />
+      </div>
+    </div>
   </section>
 </template>
 
@@ -262,6 +334,82 @@ watch(
       border: 1px solid rgba(248, 113, 113, 0.28);
     }
   }
+
+  &__field-skeleton {
+    display: grid;
+    gap: 8px;
+  }
+
+  &__skeleton {
+    display: inline-block;
+    border-radius: 12px;
+    background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.08) 25%,
+            rgba(255, 255, 255, 0.16) 37%,
+            rgba(255, 255, 255, 0.08) 63%
+    );
+    background-size: 400% 100%;
+    animation: profile-form-card-shimmer 1.4s ease infinite;
+
+    &--title {
+      width: 160px;
+      height: 28px;
+    }
+
+    &--text {
+      display: block;
+      width: 72%;
+      height: 14px;
+      margin-top: 6px;
+    }
+
+    &--text-wide {
+      width: 100%;
+    }
+
+    &--label {
+      width: 90px;
+      height: 14px;
+      border-radius: 8px;
+    }
+
+    &--input {
+      width: 100%;
+      height: 52px;
+      border-radius: 16px;
+    }
+
+    &--textarea {
+      width: 100%;
+      height: 120px;
+      border-radius: 16px;
+    }
+
+    &--action-button {
+      width: 136px;
+      height: 48px;
+      border-radius: 18px;
+    }
+
+    &--action-button-ghost {
+      opacity: 0.75;
+    }
+
+    &--action-button-primary {
+      width: 148px;
+    }
+  }
+}
+
+@keyframes profile-form-card-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 @media (max-width: 768px) {
@@ -276,6 +424,17 @@ watch(
 
     &__full {
       grid-column: auto;
+    }
+
+    &__skeleton {
+      &--text {
+        width: 100%;
+      }
+
+      &--action-button,
+      &--action-button-primary {
+        width: 100%;
+      }
     }
   }
 }

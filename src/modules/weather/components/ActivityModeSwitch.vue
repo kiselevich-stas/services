@@ -115,7 +115,6 @@ const scoreRingOption = computed(() => {
                   { offset: 1, color: endColor },
                 ],
               },
-              shadowBlur: 14,
               shadowColor: startColor,
             },
           },

@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router'
 
 import CountdownModulePreview from "../components/preview/CountdownModulePreview.vue";
-import WeatherModulePreview from "../components/preview/WeatherModulePreview.vue";
+import WeatherModulePreview from "../modules/weather/components/WeatherModulePreview.vue";
 
 const router = useRouter()
 
@@ -63,11 +63,6 @@ function goTo(route: string) {
           <p class="module-card__description">
             {{ module.description }}
           </p>
-
-          <div class="module-card__action">
-            Перейти в модуль
-            <span class="arrow">→</span>
-          </div>
         </div>
       </article>
     </div>

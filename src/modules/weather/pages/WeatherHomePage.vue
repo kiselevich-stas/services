@@ -14,15 +14,21 @@
 
     <div class="home-grid">
       <div class="home-grid__left">
-        <CitySearch/>
-        <ActivityModeSwitch/>
-        <!--        <RecommendationPanel />-->
+        <CitySearch />
+        <ActivityModeSwitch />
+        <!-- <RecommendationPanel /> -->
       </div>
 
-      <div class="home-grid__right" v-if="weather && selectedCity">
-        <WeatherCard/>
-        <HourlyForecast/>
+      <div class="home-grid__right" v-if="isDetectingCity">
+        <WeatherCardSkeleton />
+        <HourlyForecastSkeleton />
       </div>
+
+      <div class="home-grid__right" v-else-if="weather && selectedCity">
+        <WeatherCard />
+        <HourlyForecast />
+      </div>
+
       <div v-else class="panel weather-card__empty">
         <img src="/icons/weatherCardEmpty.svg" alt="">
         Выбери город, чтобы получить данные о погоде.
@@ -32,46 +38,77 @@
 </template>
 
 <script setup lang="ts">
-import {computed, watch} from 'vue'
-import {useQuery} from '@tanstack/vue-query'
+import { computed, onMounted } from 'vue'
 
 import ActivityModeSwitch from '../components/ActivityModeSwitch.vue'
 import CitySearch from '../components/CitySearch.vue'
 import HourlyForecast from '../components/HourlyForecast.vue'
-import RecommendationPanel from '../components/RecommendationPanel.vue'
 import WeatherCard from '../components/WeatherCard.vue'
-import {fetchWeather} from "../api/openMeteo.ts";
-import {useWeatherStore} from "../store/weather.ts";
+import WeatherCardSkeleton from '../components/skeleton/WeatherCardSkeleton.vue'
+import HourlyForecastSkeleton from '../components/skeleton/HourlyForecastSkeleton.vue'
+
+import { fetchWeather } from '../api/openMeteo.ts'
+import { useWeatherStore } from '../store/weather.ts'
+import type { City } from '../types.ts'
 
 const weatherStore = useWeatherStore()
 
-
+const isDetectingCity = computed(() => weatherStore.isDetectingCity)
 const weather = computed(() => weatherStore.weather)
 const selectedCity = computed(() => weatherStore.selectedCity)
 
-const weatherQuery = useQuery({
-  queryKey: computed(() => ['weather', selectedCity.value?.id]),
-  queryFn: () => {
-    if (!selectedCity.value) {
-      throw new Error('Город не выбран')
-    }
+async function detectWeatherByLocation(): Promise<void> {
+  if (selectedCity.value || weather.value) {
+    return
+  }
 
-    return fetchWeather(selectedCity.value)
-  },
-  enabled: computed(() => !!selectedCity.value),
+  if (!navigator.geolocation) {
+    weatherStore.setIsDetectingCity(false)
+    return
+  }
+
+  weatherStore.setIsDetectingCity(true)
+
+  navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const city: City = {
+            id: `geo-${position.coords.latitude}-${position.coords.longitude}`,
+            name: 'Моё местоположение',
+            country: '',
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            timezone: 'auto',
+          }
+
+          const weatherData = await fetchWeather(city)
+
+          weatherStore.applyAutoDetectedCity(city)
+          weatherStore.setWeather(weatherData.current)
+          weatherStore.setHourlyForecast(weatherData.hourly)
+        } catch (error) {
+          console.error('Ошибка получения погоды по геолокации', error)
+        } finally {
+          weatherStore.setIsDetectingCity(false)
+        }
+      },
+      (error) => {
+        console.error('Ошибка геолокации', error)
+        weatherStore.setIsDetectingCity(false)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+  )
+}
+
+onMounted(() => {
+  detectWeatherByLocation()
 })
-
-watch(
-    () => weatherQuery.data.value,
-    (value) => {
-      if (!value) return
-
-      weatherStore.setWeather(value.current)
-      weatherStore.setHourlyForecast(value.hourly)
-    },
-    {immediate: true},
-)
 </script>
+
 <style lang="scss">
 .weather-card__empty {
   display: flex;

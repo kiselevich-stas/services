@@ -80,7 +80,7 @@ async function handleLogin(): Promise<void> {
 
   try {
     await authStore.login(form.value.email, form.value.password)
-    await router.push('/countdowns')
+    await router.push('/')
   } catch (error) {
     submitError.value = getAuthErrorMessage(error)
   }

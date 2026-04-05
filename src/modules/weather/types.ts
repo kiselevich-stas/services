@@ -34,6 +34,7 @@ export interface HourlyForecastItem {
   temperature: number
   precipitationProbability: number
   windSpeed: number
+  weatherCode: number
 }
 
 

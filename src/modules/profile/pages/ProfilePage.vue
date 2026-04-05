@@ -1,24 +1,16 @@
 <template>
-    <UiPageLoader
-        :visible="isPageLoading"
-        text="Загружаем профиль..."
-    />
 
     <section class="profile-page">
-      <div v-if="pageError" class="profile-page__error">
-        {{ pageError }}
-      </div>
-
-      <div v-else-if="profileStore.profile" class="profile-page__grid">
+      <div class="profile-page__grid">
         <ProfileSidebarCard
             :profile="profileStore.profile"
-            :logout-loading="authStore.loading"
+            :loading="isPageLoading"
             @logout="handleLogout"
         />
 
         <ProfileFormCard
             :profile="profileStore.profile"
-            :loading="profileStore.saving"
+            :loading="isPageLoading"
             :success-message="successMessage"
             :submit-error="submitError"
             @save="handleSave"

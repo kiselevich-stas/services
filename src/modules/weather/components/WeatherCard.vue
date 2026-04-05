@@ -1,5 +1,5 @@
 <template>
-  <section class="panel weather-card">
+  <section class="panel weather-card" :style="temperatureGlowStyle">
     <Transition name="weather-card-fade" mode="out-in">
       <div
           v-if="weather && cityName"
@@ -13,7 +13,7 @@
             <p class="weather-card__desc">{{ weatherLabel }}</p>
             <p class="weather-card__feels">Ощущается как {{ weather.feelsLike }}°</p>
           </div>
-
+          <WeatherIcon size="md" :icon="weatherIcon" />
 
         </div>
 
@@ -56,6 +56,8 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart } from 'echarts/charts'
 import { GraphicComponent, TooltipComponent } from 'echarts/components'
+import WeatherIcon from "./WeatherIcon.vue";
+import { getWeatherCodeIcon } from "../utils/weatherIcon.ts";
 
 use([
   CanvasRenderer,
@@ -75,13 +77,79 @@ const weatherLabel = computed(() => {
   return getWeatherCodeLabel(weather.value.weatherCode)
 })
 
+const temperatureGlowStyle = computed(() => {
+  const temp = weather.value?.temperature ?? 0
 
+  const clamp = (value: number, min: number, max: number) =>
+      Math.min(max, Math.max(min, value))
 
+  const coldMin = -25
+  const coldMax = 10
+  const warmMin = 10
+  const warmMax = 40
+
+  let hue = 210
+  let saturation = 90
+  let lightness = 65
+  let alpha = 0.22
+  let size = 240
+
+  if (temp <= 10) {
+    const t = clamp((temp - coldMin) / (coldMax - coldMin), 0, 1)
+    // синий -> голубой, но не до зелёного
+    hue = 220 - t * 30 // 220 -> 190
+    saturation = 85
+    lightness = 68
+  } else {
+    const t = clamp((temp - warmMin) / (warmMax - warmMin), 0, 1)
+    // тёплый светлый -> жёлтый -> оранжевый
+    hue = 55 - t * 20 // 55 -> 35
+    saturation = 95
+    lightness = 68
+  }
+
+  return {
+    '--temp-glow-color': `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`,
+    '--temp-glow-size': `${size}px`,
+  }
+})
+
+const weatherIcon = computed(() => {
+  if (!weather.value) return null
+  return getWeatherCodeIcon(weather.value.weatherCode)
+})
 
 </script>
 <style lang="scss">
 .weather-card {
   overflow: hidden;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &::before {
+    top: -90px;
+    right: -70px;
+    width: calc(var(--temp-glow-size, 240px) * 1.15);
+    height: calc(var(--temp-glow-size, 240px) * 1.15);
+    background: var(--temp-glow-color, hsla(220, 90%, 65%, 0.12));
+    filter: blur(60px);
+  }
+
+  &::after {
+    top: -70px;
+    right: -50px;
+    width: var(--temp-glow-size, 240px);
+    height: var(--temp-glow-size, 240px);
+    background: var(--temp-glow-color, hsla(220, 90%, 65%, 0.22));
+    filter: blur(36px);
+  }
 
   &__content {
     display: flex;
