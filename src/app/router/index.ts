@@ -12,7 +12,7 @@ import {profileRoutes} from "../../modules/profile";
 import { useAuthStore} from "../../stores/auth.ts";
 
 export const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHashHistory(),
     routes: [
         ...countdownRoutes,
         ...weatherRoutes,
