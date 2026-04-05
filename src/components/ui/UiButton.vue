@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
 
-type ButtonVariant = 'primary' | 'ghost' | 'secondary' | 'danger'
+type ButtonVariant =
+    | 'primary'
+    | 'ghost'
+    | 'secondary'
+    | 'danger'
+    | 'danger-soft'
+
 type ButtonSize = 'sm' | 'md' | 'lg'
 type ButtonNativeType = 'button' | 'submit' | 'reset'
 
@@ -213,6 +219,21 @@ function handleMouseUp(event: MouseEvent): void {
     &:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: 0 14px 34px rgba(239, 68, 68, 0.3);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  &--danger-soft {
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+
+    &:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.38);
     }
 
     &:active:not(:disabled) {

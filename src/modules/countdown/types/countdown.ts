@@ -31,3 +31,16 @@ export interface CountdownFormValues {
   mood: CountdownMood
   color: string
 }
+
+export interface CountdownRow {
+  id: string
+  user_id: string
+  title: string
+  description: string
+  target_date: string
+  emoji: string
+  mood: CountdownMood
+  color: string
+  created_at: string
+  updated_at: string
+}

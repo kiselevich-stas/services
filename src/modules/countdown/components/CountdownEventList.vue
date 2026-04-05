@@ -1,41 +1,44 @@
 <template>
-  <section class="panel">
-    <div class="panel__header">
-      <h2 class="panel__title">Мои ожидания</h2>
-      <p class="panel__text">Выбирай событие и смотри, сколько осталось.</p>
+  <section class="panel countdown-list">
+    <div class="panel__header countdown-list__header">
+      <div>
+        <h2 class="panel__title">Мои countdown</h2>
+        <p class="panel__text">Все записи подтягиваются из Supabase.</p>
+      </div>
+
+      <RouterLink class="countdown-list__add" to="/countdowns/new">
+        + Новое событие
+      </RouterLink>
     </div>
 
-    <div class="countdown-list">
-      <button
-        v-for="event in events"
-        :key="event.id"
-        type="button"
-        class="countdown-list__item"
-        :class="{ 'countdown-list__item--active': event.id === activeId }"
-        @click="$emit('select', event.id)"
-      >
-        <div>
-          <div class="countdown-list__title">{{ event.emoji }} {{ event.title }}</div>
-          <div class="countdown-list__date">{{ formatCountdownDate(event.targetDate) }}</div>
-        </div>
-
-        <span class="countdown-list__dot" :style="{ backgroundColor: event.color }"></span>
-      </button>
+    <div v-if="events.length" class="countdown-list__items">
+      <CountdownEventListItem
+          v-for="event in events"
+          :key="event.id"
+          :event="event"
+          :is-active="event.id === activeId"
+          @select="emit('select', $event)"
+      />
     </div>
+
+    <CountdownEventListEmptyState v-else />
   </section>
 </template>
 
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
+
 import type { CountdownEvent } from '../types/countdown'
-import { formatCountdownDate } from '../utils/date'
+import CountdownEventListItem from './CountdownEventListItem.vue'
+import CountdownEventListEmptyState from './CountdownEventListEmptyState.vue'
 
 defineProps<{
   events: CountdownEvent[]
-  activeId: string | null
+  activeId?: string | null
 }>()
 
-defineEmits<{
-  (event: 'select', id: string): void
+const emit = defineEmits<{
+  select: [id: string]
 }>()
 </script>
 
@@ -43,49 +46,43 @@ defineEmits<{
 .countdown-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 
-  &__item {
+  &__header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px;
-    background: rgba(255,255,255,0.04);
-    color: inherit;
-    cursor: pointer;
-    text-align: left;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    align-items: center;
+    gap: 16px;
+  }
+
+  &__add {
+    border-radius: 14px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease;
 
     &:hover {
       transform: translateY(-1px);
-      border-color: rgba(255,255,255,0.18);
-    }
-
-    &--active {
-      border-color: rgba(255,255,255,0.26);
-      background: rgba(255,255,255,0.08);
+      background: rgba(255, 255, 255, 0.12);
     }
   }
 
-  &__title {
-    font-weight: 600;
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
+}
 
-  &__date {
-    margin-top: 4px;
-    color: rgba(255,255,255,0.64);
-    font-size: 13px;
-  }
-
-  &__dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    flex-shrink: 0;
+@media (max-width: 720px) {
+  .countdown-list__header {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

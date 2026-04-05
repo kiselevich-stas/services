@@ -1,6 +1,4 @@
-import type { CountdownMood } from '../types/countdown'
-
-export const COUNTDOWN_STORAGE_KEY = 'weather-pulse-countdowns'
+import type { CountdownFormValues, CountdownMood } from '../types/countdown'
 
 export const COUNTDOWN_MOODS: Array<{ value: CountdownMood; label: string }> = [
   { value: 'calm', label: 'Спокойное ожидание' },
@@ -17,11 +15,11 @@ export const COUNTDOWN_COLORS = [
   '#06B6D4',
 ]
 
-export const DEFAULT_COUNTDOWN = {
-  title: 'Мой день рождения',
-  description: 'Очень жду этот день 🎉',
-  targetDate: '2027-04-12T00:00:00',
-  emoji: '🎂',
-  mood: 'party',
+export const DEFAULT_COUNTDOWN_FORM: CountdownFormValues = {
+  title: '',
+  description: '',
+  targetDate: '',
+  emoji: '✨',
+  mood: 'excited',
   color: '#EC4899',
-} as const
+}

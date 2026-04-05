@@ -1,5 +1,6 @@
 <template>
   <section class="home-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <div class="hero panel hero-panel">
       <div class="hero-panel__content">
         <p class="hero-panel__eyebrow">Weather decisions, not just weather data</p>
@@ -50,12 +51,19 @@ import HourlyForecastSkeleton from '../components/skeleton/HourlyForecastSkeleto
 import { fetchWeather } from '../api/openMeteo.ts'
 import { useWeatherStore } from '../store/weather.ts'
 import type { City } from '../types.ts'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const weatherStore = useWeatherStore()
 
 const isDetectingCity = computed(() => weatherStore.isDetectingCity)
 const weather = computed(() => weatherStore.weather)
 const selectedCity = computed(() => weatherStore.selectedCity)
+
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Погода' },
+])
 
 async function detectWeatherByLocation(): Promise<void> {
   if (selectedCity.value || weather.value) {
