@@ -1,0 +1,53 @@
+<svg
+        width="260"
+        height="150"
+        viewBox="0 0 260 150"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+>
+    <defs>
+        <linearGradient id="panelGradient" x1="20" y1="16" x2="225" y2="145" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#172033" />
+            <stop offset="1" stop-color="#0B1220" />
+        </linearGradient>
+
+        <linearGradient id="lineGradient" x1="44" y1="55" x2="216" y2="55" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#38BDF8" stop-opacity="0.25" />
+            <stop offset="1" stop-color="#A78BFA" stop-opacity="0.25" />
+        </linearGradient>
+
+        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="32" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#334155" />
+            <stop offset="1" stop-color="#1E293B" />
+        </linearGradient>
+    </defs>
+
+    <rect x="12" y="12" width="236" height="126" rx="24" fill="url(#panelGradient)" />
+    <rect x="12.5" y="12.5" width="235" height="125" rx="23.5" stroke="white" stroke-opacity="0.08" />
+
+    <path
+            d="M44 92C60 78 78 70 96 72C112 74 123 90 140 90C158 90 168 68 185 64C197 61 207 64 216 70"
+            stroke="url(#lineGradient)"
+            stroke-width="4"
+            stroke-linecap="round"
+    />
+
+    <g opacity="0.95">
+        <rect x="36" y="94" width="24" height="28" rx="10" fill="url(#barGradient)" />
+        <rect x="72" y="84" width="24" height="38" rx="10" fill="url(#barGradient)" />
+        <rect x="108" y="88" width="24" height="34" rx="10" fill="url(#barGradient)" />
+        <rect x="144" y="76" width="24" height="46" rx="10" fill="url(#barGradient)" />
+        <rect x="180" y="82" width="24" height="40" rx="10" fill="url(#barGradient)" />
+    </g>
+
+    <g opacity="0.75">
+        <rect x="35" y="46" width="26" height="6" rx="3" fill="#475569" />
+        <rect x="71" y="46" width="26" height="6" rx="3" fill="#475569" />
+        <rect x="107" y="46" width="26" height="6" rx="3" fill="#475569" />
+        <rect x="143" y="46" width="26" height="6" rx="3" fill="#475569" />
+        <rect x="179" y="46" width="26" height="6" rx="3" fill="#475569" />
+    </g>
+
+    <circle cx="52" cy="33" r="3" fill="#7DD3FC" fill-opacity="0.8" />
+    <circle cx="205" cy="34" r="2.5" fill="#C4B5FD" fill-opacity="0.75" />
+</svg>

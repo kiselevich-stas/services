@@ -1,0 +1,54 @@
+<svg
+        width="220"
+        height="160"
+        viewBox="0 0 220 160"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+>
+    <defs>
+        <linearGradient id="bgGradient" x1="24" y1="20" x2="190" y2="150" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#1E293B" />
+            <stop offset="1" stop-color="#0F172A" />
+        </linearGradient>
+
+        <linearGradient id="glowGradient" x1="60" y1="40" x2="150" y2="120" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#38BDF8" stop-opacity="0.35" />
+            <stop offset="1" stop-color="#818CF8" stop-opacity="0.12" />
+        </linearGradient>
+
+        <linearGradient id="cloudGradient" x1="96" y1="58" x2="146" y2="98" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#E2E8F0" stop-opacity="0.95" />
+            <stop offset="1" stop-color="#94A3B8" stop-opacity="0.9" />
+        </linearGradient>
+
+        <filter id="blurGlow" x="0" y="0" width="220" height="160" filterUnits="userSpaceOnUse">
+            <feGaussianBlur stdDeviation="18" />
+        </filter>
+    </defs>
+
+    <rect x="12" y="12" width="196" height="136" rx="24" fill="url(#bgGradient)" />
+    <rect x="12.5" y="12.5" width="195" height="135" rx="23.5" stroke="white" stroke-opacity="0.08" />
+
+    <ellipse cx="110" cy="75" rx="58" ry="40" fill="url(#glowGradient)" filter="url(#blurGlow)" />
+
+    <circle cx="78" cy="56" r="16" fill="#F8FAFC" fill-opacity="0.95" />
+    <g opacity="0.95">
+        <circle cx="120" cy="78" r="18" fill="url(#cloudGradient)" />
+        <circle cx="101" cy="82" r="14" fill="url(#cloudGradient)" />
+        <circle cx="137" cy="83" r="12" fill="url(#cloudGradient)" />
+        <rect x="94" y="82" width="54" height="18" rx="9" fill="url(#cloudGradient)" />
+    </g>
+
+    <path
+            d="M76 118C85 111 95 108 110 108C125 108 135 111 144 118"
+            stroke="#7DD3FC"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-opacity="0.9"
+    />
+
+    <circle cx="60" cy="42" r="2.5" fill="#BAE6FD" fill-opacity="0.9" />
+    <circle cx="157" cy="48" r="2" fill="#C4B5FD" fill-opacity="0.75" />
+    <circle cx="168" cy="106" r="2.5" fill="#BAE6FD" fill-opacity="0.75" />
+    <circle cx="49" cy="101" r="1.8" fill="#E0F2FE" fill-opacity="0.8" />
+</svg>
