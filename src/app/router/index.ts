@@ -10,6 +10,8 @@ import { countdownRoutes } from '../../modules/countdown/router.ts'
 import { weatherRoutes } from '../../modules/weather/router.ts'
 import {profileRoutes} from "../../modules/profile";
 import { useAuthStore} from "../../stores/auth.ts";
+import SettingsPage from "../../pages/settings/ui/SettingsPage.vue";
+import {usePreferencesStore} from "../../stores/preferences.ts";
 
 export const router = createRouter({
     history: createWebHashHistory(),
@@ -33,6 +35,14 @@ export const router = createRouter({
             meta: { guestOnly: true },
         },
         {
+            path: '/settings',
+            name: 'settings',
+            component: SettingsPage,
+            meta: {
+                requiresAuth: true,
+            },
+        },
+        {
             path: '/:pathMatch(.*)*',
             component: NotFoundPage,
         }
@@ -44,17 +54,23 @@ export const router = createRouter({
  */
 router.beforeEach(async (to) => {
     const authStore = useAuthStore()
+    const preferencesStore = usePreferencesStore()
 
-    // инициализируем auth один раз
     await authStore.initAuth()
 
-    // если требуется авторизация и её нет → редирект
     if (to.meta.requiresAuth && !authStore.user) {
         return '/login'
     }
 
-    // если пользователь уже авторизован → не пускаем на login
     if (to.meta.guestOnly && authStore.user) {
         return '/'
     }
+
+    const requiredModule = to.meta.module as 'countdown' | undefined
+
+    if (requiredModule === 'countdown' && !preferencesStore.isModuleEnabled('countdown')) {
+        return '/'
+    }
+
+    return true
 })

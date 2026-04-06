@@ -4,11 +4,9 @@
       <RouterLink to="/" class="app-header__logo">
         Pulse
       </RouterLink>
-<!--      <nav class="app-header__nav">-->
-<!--        <RouterLink to="/weather" class="app-header__link">Погода</RouterLink>-->
-<!--        <RouterLink to="/countdowns" class="app-header__link">Ожидания</RouterLink>-->
-<!--      </nav>-->
-
+      <router-link to="/settings">
+        Настройки
+      </router-link>
       <HeaderAuth />
     </div>
   </header>

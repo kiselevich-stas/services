@@ -7,17 +7,29 @@ import CountdownHomePage from './pages/CountdownHomePage.vue'
 export const countdownRoutes: RouteRecordRaw[] = [
   {
     path: '/countdowns',
+    name: 'countdown-home',
     component: CountdownHomePage,
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      module: 'countdown',
+    },
   },
   {
     path: '/countdowns/new',
+    name: 'countdown-create',
     component: CountdownCreatePage,
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      module: 'countdown',
+    },
   },
   {
     path: '/countdowns/:id',
+    name: 'countdown-details',
     component: CountdownDetailsPage,
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+      module: 'countdown',
+    },
   },
 ]

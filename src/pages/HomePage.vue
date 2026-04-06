@@ -1,36 +1,50 @@
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-import CountdownModulePreview from "../components/preview/CountdownModulePreview.vue";
-import WeatherModulePreview from "../modules/weather/components/WeatherModulePreview.vue";
+import CountdownModulePreview from '../components/preview/CountdownModulePreview.vue'
+import WeatherModulePreview from '../modules/weather/components/WeatherModulePreview.vue'
+import { usePreferencesStore } from '../stores/preferences.ts'
 
 const router = useRouter()
+const preferencesStore = usePreferencesStore()
 
-type ModuleCard = {
+type ModuleCardTheme = 'countdowns' | 'weather'
+
+interface ModuleCard {
   title: string
   description: string
   route: string
-  theme: 'countdowns' | 'weather'
+  theme: ModuleCardTheme
+  enabled: boolean
 }
 
-const modules: ModuleCard[] = [
+const modules = computed<ModuleCard[]>(() => [
   {
     title: 'Таймеры',
     description: 'Создавай, отслеживай и управляй обратными отсчётами в одном месте',
     route: '/countdowns',
     theme: 'countdowns',
+    enabled: preferencesStore.isModuleEnabled('countdown'),
   },
   {
     title: 'Погода',
     description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
     route: '/weather',
     theme: 'weather',
+    enabled: true,
   },
-]
+].filter((module) => module.enabled))
 
 function goTo(route: string) {
   router.push(route)
 }
+
+onMounted(async () => {
+  if (!preferencesStore.initialized) {
+    await preferencesStore.loadSettings()
+  }
+})
 </script>
 
 <template>
@@ -42,7 +56,31 @@ function goTo(route: string) {
       </p>
     </div>
 
-    <div class="modules-grid">
+    <div
+        v-if="preferencesStore.loading"
+        class="modules-grid"
+    >
+      <article
+          v-for="index in 2"
+          :key="index"
+          class="module-card module-card--skeleton"
+      >
+        <div class="module-card__preview module-card__preview--skeleton">
+          <div class="skeleton skeleton--preview" />
+        </div>
+
+        <div class="module-card__content">
+          <div class="skeleton skeleton--title" />
+          <div class="skeleton skeleton--description" />
+          <div class="skeleton skeleton--description skeleton--description-short" />
+        </div>
+      </article>
+    </div>
+
+    <div
+        v-else
+        class="modules-grid"
+    >
       <article
           v-for="module in modules"
           :key="module.route"
@@ -93,7 +131,7 @@ function goTo(route: string) {
 
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
 
@@ -110,7 +148,6 @@ function goTo(route: string) {
       transform 0.35s ease,
       box-shadow 0.35s ease,
       border-color 0.35s ease;
-
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -181,21 +218,75 @@ function goTo(route: string) {
   color: rgba(255, 255, 255, 0.72);
 }
 
-.module-card__action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
+.module-card--skeleton {
+  cursor: default;
+  pointer-events: none;
+  background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012)),
+      rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+
+  &:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
-.arrow {
-  transition: transform 0.25s ease;
+.module-card__preview--skeleton {
+  align-items: stretch;
 }
 
-.module-card:hover .arrow {
-  transform: translateX(4px);
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+          100deg,
+          transparent 20%,
+          rgba(255, 255, 255, 0.12) 40%,
+          transparent 60%
+  );
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton--preview {
+  width: 100%;
+  min-height: 230px;
+  border-radius: 22px;
+}
+
+.skeleton--title {
+  width: 220px;
+  height: 28px;
+  margin-bottom: 14px;
+  border-radius: 10px;
+}
+
+.skeleton--description {
+  width: 100%;
+  max-width: 420px;
+  height: 14px;
+  margin-bottom: 10px;
+}
+
+.skeleton--description-short {
+  max-width: 300px;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @media (max-width: 900px) {
@@ -221,6 +312,15 @@ function goTo(route: string) {
 
   .module-card__title {
     font-size: 22px;
+  }
+
+  .skeleton--preview {
+    min-height: 180px;
+  }
+
+  .skeleton--title {
+    width: 180px;
+    height: 24px;
   }
 }
 </style>

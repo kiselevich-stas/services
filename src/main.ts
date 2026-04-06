@@ -6,14 +6,30 @@ import App from './App.vue'
 import { router } from './app/router'
 import { vueQueryOptions } from './app/providers/query-client'
 import { useAuthStore } from './stores/auth'
+import { usePreferencesStore } from './stores/preferences'
 
 import './styles/main.scss'
 
-const app = createApp(App)
-const pinia = createPinia()
+async function bootstrap() {
+    const app = createApp(App)
+    const pinia = createPinia()
 
-app.use(pinia)
-app.use(router)
-app.use(VueQueryPlugin, vueQueryOptions)
+    app.use(pinia)
+    app.use(router)
+    app.use(VueQueryPlugin, vueQueryOptions)
 
-app.mount('#app')
+    const authStore = useAuthStore()
+    const preferencesStore = usePreferencesStore()
+
+    await authStore.initAuth()
+
+    if (authStore.user) {
+        await preferencesStore.loadSettings()
+    } else {
+        preferencesStore.resetToDefault()
+    }
+
+    app.mount('#app')
+}
+
+bootstrap()
