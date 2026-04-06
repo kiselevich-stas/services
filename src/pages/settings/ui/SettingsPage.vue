@@ -21,7 +21,11 @@ async function onToggleModule(module: AppModule, value: boolean) {
     console.error('Не удалось сохранить настройки модуля:', error)
   }
 }
-
+onMounted(async () => {
+  if (!preferencesStore.initialized) {
+    await preferencesStore.loadSettings()
+  }
+})
 </script>
 
 <template>
