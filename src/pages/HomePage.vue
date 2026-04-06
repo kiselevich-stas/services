@@ -1,31 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import CountdownModulePreview from '../components/preview/CountdownModulePreview.vue'
 import WeatherModulePreview from '../modules/weather/components/WeatherModulePreview.vue'
 import { usePreferencesStore } from '../stores/preferences.ts'
+import { useAuthStore } from '../stores/auth.ts'
 
 const router = useRouter()
 const preferencesStore = usePreferencesStore()
+const authStore = useAuthStore()
 
-type ModuleCardTheme = 'countdowns' | 'weather'
+const isAuthorized = computed(() => Boolean(authStore.user))
 
-interface ModuleCard {
-  title: string
-  description: string
-  route: string
-  theme: ModuleCardTheme
-  enabled: boolean
-}
-
-const modules = computed<ModuleCard[]>(() => [
+const modules = computed(() => [
   {
     title: 'Таймеры',
     description: 'Создавай, отслеживай и управляй обратными отсчётами в одном месте',
     route: '/countdowns',
     theme: 'countdowns',
     enabled: preferencesStore.isModuleEnabled('countdown'),
+    requiresAuth: true,
   },
   {
     title: 'Погода',
@@ -33,18 +28,17 @@ const modules = computed<ModuleCard[]>(() => [
     route: '/weather',
     theme: 'weather',
     enabled: true,
+    requiresAuth: false,
   },
-].filter((module) => module.enabled))
+].filter(module => module.enabled))
 
-function goTo(route: string) {
+function goTo(route: string, requiresAuth: boolean) {
+  if (requiresAuth && !isAuthorized.value) {
+    return
+  }
+
   router.push(route)
 }
-
-onMounted(async () => {
-  if (!preferencesStore.initialized) {
-    await preferencesStore.loadSettings()
-  }
-})
 </script>
 
 <template>
@@ -56,51 +50,53 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div
-        v-if="preferencesStore.loading"
-        class="modules-grid"
-    >
-      <article
-          v-for="index in 2"
-          :key="index"
-          class="module-card module-card--skeleton"
-      >
-        <div class="module-card__preview module-card__preview--skeleton">
-          <div class="skeleton skeleton--preview" />
-        </div>
-
-        <div class="module-card__content">
-          <div class="skeleton skeleton--title" />
-          <div class="skeleton skeleton--description" />
-          <div class="skeleton skeleton--description skeleton--description-short" />
-        </div>
-      </article>
-    </div>
-
-    <div
-        v-else
-        class="modules-grid"
-    >
+    <div class="modules-grid">
       <article
           v-for="module in modules"
           :key="module.route"
           class="module-card"
-          :class="`module-card--${module.theme}`"
-          @click="goTo(module.route)"
+          :class="[
+          `module-card--${module.theme}`,
+          {
+            'module-card--locked': module.requiresAuth && !isAuthorized,
+          },
+        ]"
+          @click="goTo(module.route, module.requiresAuth)"
       >
-        <div class="module-card__preview">
-          <CountdownModulePreview v-if="module.theme === 'countdowns'" />
-          <WeatherModulePreview v-else-if="module.theme === 'weather'" />
+        <div class="module-card__inner">
+          <div class="module-card__preview">
+            <CountdownModulePreview v-if="module.theme === 'countdowns'" />
+            <WeatherModulePreview v-else-if="module.theme === 'weather'" />
+          </div>
+
+          <div class="module-card__content">
+            <h2 class="module-card__title">
+              {{ module.title }}
+            </h2>
+
+            <p class="module-card__description">
+              {{ module.description }}
+            </p>
+          </div>
         </div>
 
-        <div class="module-card__content">
-          <h2 class="module-card__title">
-            {{ module.title }}
-          </h2>
+        <div
+            v-if="module.requiresAuth && !isAuthorized"
+            class="module-card__overlay"
+        >
+          <div class="module-card__overlay-content">
+            <div class="module-card__overlay-label">
+              Ограниченный доступ
+            </div>
 
-          <p class="module-card__description">
-            {{ module.description }}
-          </p>
+            <div class="module-card__overlay-title">
+              Требуется авторизация
+            </div>
+
+            <div class="module-card__overlay-description">
+              Авторизуйтесь, чтобы получить доступ к этому модулю.
+            </div>
+          </div>
         </div>
       </article>
     </div>
@@ -166,6 +162,28 @@ onMounted(async () => {
   }
 }
 
+.module-card__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  height: 100%;
+  transition:
+      filter 0.3s ease,
+      transform 0.3s ease,
+      opacity 0.3s ease;
+}
+
+.module-card--locked .module-card__inner {
+  filter: blur(10px);
+  transform: scale(1.01);
+  pointer-events: none;
+  user-select: none;
+}
+
 .module-card--countdowns {
   background:
       radial-gradient(circle at top left, rgba(139, 92, 246, 0.24), transparent 34%),
@@ -190,6 +208,14 @@ onMounted(async () => {
   }
 }
 
+.module-card--locked {
+  cursor: default;
+}
+
+.module-card--locked:hover {
+  transform: none;
+}
+
 .module-card__preview {
   position: relative;
   z-index: 1;
@@ -211,82 +237,72 @@ onMounted(async () => {
 }
 
 .module-card__description {
-  margin: 0 0 18px;
+  margin: 0;
   max-width: 500px;
   font-size: 15px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.72);
 }
 
-.module-card--skeleton {
-  cursor: default;
-  pointer-events: none;
-  background:
-      linear-gradient(135deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.012)),
-      rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-
-  &:hover {
-    transform: none;
-    box-shadow: none;
-  }
+.module-card__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 11, 22, 0.38);
 }
 
-.module-card__preview--skeleton {
-  align-items: stretch;
-}
-
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.skeleton::after {
+.module-card__overlay::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-          100deg,
-          transparent 20%,
-          rgba(255, 255, 255, 0.12) 40%,
-          transparent 60%
+          180deg,
+          rgba(255, 255, 255, 0.03) 0%,
+          rgba(255, 255, 255, 0.01) 100%
   );
-  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
-.skeleton--preview {
-  width: 100%;
-  min-height: 230px;
-  border-radius: 22px;
-}
-
-.skeleton--title {
-  width: 220px;
-  height: 28px;
-  margin-bottom: 14px;
-  border-radius: 10px;
-}
-
-.skeleton--description {
-  width: 100%;
-  max-width: 420px;
-  height: 14px;
-  margin-bottom: 10px;
-}
-
-.skeleton--description-short {
+.module-card__overlay-content {
+  position: relative;
+  z-index: 1;
   max-width: 300px;
+  text-align: center;
 }
 
-@keyframes skeleton-shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+.module-card__overlay-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.module-card__overlay-title {
+  margin-bottom: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #ffffff;
+}
+
+.module-card__overlay-description {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 @media (max-width: 900px) {
@@ -314,13 +330,16 @@ onMounted(async () => {
     font-size: 22px;
   }
 
-  .skeleton--preview {
-    min-height: 180px;
+  .module-card__overlay {
+    padding: 20px;
   }
 
-  .skeleton--title {
-    width: 180px;
-    height: 24px;
+  .module-card__overlay-title {
+    font-size: 20px;
+  }
+
+  .module-card__overlay-description {
+    font-size: 13px;
   }
 }
 </style>
