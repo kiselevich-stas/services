@@ -8,6 +8,7 @@ import { vueQueryOptions } from './app/providers/query-client'
 import { useAuthStore } from './stores/auth'
 import { usePreferencesStore } from './stores/preferences'
 
+import 'leaflet/dist/leaflet.css'
 import './styles/main.scss'
 
 async function bootstrap() {
