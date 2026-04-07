@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { z } from 'zod'
 import { useRouter } from 'vue-router'
 
@@ -38,9 +38,6 @@ const form = ref<RegisterFormValues>({
   confirmPassword: '',
 })
 
-const submitError = ref('')
-const submitSuccess = ref('')
-
 const {
   errors: formErrors,
   hasErrors,
@@ -50,42 +47,7 @@ const {
   resetErrors,
 } = useZodForm(registerSchema, form)
 
-const hasAnyErrors = computed(() => {
-  return Boolean(hasErrors.value || submitError.value)
-})
-
-function getRegisterErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Не удалось выполнить регистрацию. Попробуйте ещё раз.'
-  }
-
-  const message = error.message.toLowerCase().trim()
-
-  if (message.includes('user already registered')) {
-    return 'Пользователь с таким email уже зарегистрирован'
-  }
-
-  if (message.includes('password should be at least')) {
-    return 'Пароль слишком короткий'
-  }
-
-  if (message.includes('failed to fetch')) {
-    return 'Не удалось подключиться к серверу. Проверьте интернет-соединение'
-  }
-
-  return 'Не удалось выполнить регистрацию. Проверьте введённые данные'
-}
-
-function handleFieldInput(fieldName: keyof RegisterFormValues): void {
-  submitError.value = ''
-  submitSuccess.value = ''
-  handleInput(fieldName)
-}
-
 async function handleRegister(): Promise<void> {
-  submitError.value = ''
-  submitSuccess.value = ''
-
   const isValid = validateForm()
 
   if (!isValid) {
@@ -94,9 +56,6 @@ async function handleRegister(): Promise<void> {
 
   try {
     await authStore.register(form.value.email, form.value.password)
-
-    submitSuccess.value =
-        'Регистрация прошла успешно. Проверьте почту для подтверждения email.'
 
     form.value = {
       email: '',
@@ -109,8 +68,8 @@ async function handleRegister(): Promise<void> {
     setTimeout(() => {
       router.push('/login')
     }, 1500)
-  } catch (error) {
-    submitError.value = getRegisterErrorMessage(error)
+  } catch {
+    // Ошибка уже обработана в authStore через toast
   }
 }
 </script>
@@ -134,7 +93,7 @@ async function handleRegister(): Promise<void> {
             placeholder="Введите email"
             :error="formErrors.email"
             @blur="handleBlur('email')"
-            @update:model-value="handleFieldInput('email')"
+            @update:model-value="handleInput('email')"
         />
 
         <UiInput
@@ -145,7 +104,7 @@ async function handleRegister(): Promise<void> {
             placeholder="Введите пароль"
             :error="formErrors.password"
             @blur="handleBlur('password')"
-            @update:model-value="handleFieldInput('password')"
+            @update:model-value="handleInput('password')"
         />
 
         <UiInput
@@ -156,7 +115,7 @@ async function handleRegister(): Promise<void> {
             placeholder="Повторите пароль"
             :error="formErrors.confirmPassword"
             @blur="handleBlur('confirmPassword')"
-            @update:model-value="handleFieldInput('confirmPassword')"
+            @update:model-value="handleInput('confirmPassword')"
         />
 
         <UiButton
@@ -168,15 +127,7 @@ async function handleRegister(): Promise<void> {
             :loading="authStore.loading"
         />
 
-        <div v-if="submitError" class="auth-alert">
-          {{ submitError }}
-        </div>
-
-        <div v-if="submitSuccess" class="auth-success">
-          {{ submitSuccess }}
-        </div>
-
-        <p v-else-if="hasAnyErrors" class="auth-hint">
+        <p v-if="hasErrors" class="auth-hint">
           Проверьте заполнение формы
         </p>
 
@@ -209,26 +160,6 @@ async function handleRegister(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.auth-alert {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(248, 113, 113, 0.28);
-  background: rgba(248, 113, 113, 0.1);
-  color: #fca5a5;
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.auth-success {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(74, 222, 128, 0.28);
-  background: rgba(74, 222, 128, 0.1);
-  color: #86efac;
-  font-size: 14px;
-  line-height: 1.4;
 }
 
 .auth-hint {

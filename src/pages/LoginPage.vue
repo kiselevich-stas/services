@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { z } from 'zod'
 import { useRouter } from 'vue-router'
 
@@ -29,8 +29,6 @@ const form = ref<LoginFormValues>({
   password: '',
 })
 
-const submitError = ref('')
-
 const {
   errors: formErrors,
   hasErrors,
@@ -39,39 +37,7 @@ const {
   handleInput,
 } = useZodForm(loginSchema, form)
 
-const hasAnyErrors = computed(() => {
-  return Boolean(hasErrors.value || submitError.value)
-})
-
-function getAuthErrorMessage(error: unknown): string {
-  if (!(error instanceof Error)) {
-    return 'Не удалось выполнить вход. Попробуйте ещё раз.'
-  }
-
-  const message = error.message.toLowerCase().trim()
-
-  if (message.includes('invalid login credentials')) {
-    return 'Неверный email или пароль'
-  }
-
-  if (message.includes('email not confirmed')) {
-    return 'Подтвердите email перед входом'
-  }
-
-  if (message.includes('too many requests')) {
-    return 'Слишком много попыток входа. Попробуйте позже'
-  }
-
-  if (message.includes('failed to fetch')) {
-    return 'Не удалось подключиться к серверу. Проверьте интернет-соединение'
-  }
-
-  return 'Не удалось выполнить вход. Проверьте введённые данные'
-}
-
 async function handleLogin(): Promise<void> {
-  submitError.value = ''
-
   const isValid = validateForm()
 
   if (!isValid) {
@@ -81,8 +47,8 @@ async function handleLogin(): Promise<void> {
   try {
     await authStore.login(form.value.email, form.value.password)
     await router.push('/')
-  } catch (error) {
-    submitError.value = getAuthErrorMessage(error)
+  } catch {
+    // Ошибка уже обработана в authStore через toast
   }
 }
 </script>
@@ -129,11 +95,7 @@ async function handleLogin(): Promise<void> {
             :loading="authStore.loading"
         />
 
-        <div v-if="submitError" class="auth-alert">
-          {{ submitError }}
-        </div>
-
-        <p v-else-if="hasAnyErrors" class="auth-hint">
+        <p v-if="hasErrors" class="auth-hint">
           Проверьте заполнение формы
         </p>
 
@@ -166,16 +128,6 @@ async function handleLogin(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.auth-alert {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(248, 113, 113, 0.28);
-  background: rgba(248, 113, 113, 0.1);
-  color: #fca5a5;
-  font-size: 14px;
-  line-height: 1.4;
 }
 
 .auth-hint {
