@@ -35,7 +35,7 @@ const modules = computed(() => [
   {
     title: 'Рабочее пространство',
     description: 'Управляй личными данными, настройками и быстрым доступом к своим возможностям',
-    route: '/workspace',
+    route: '/spaces',
     theme: 'workspace',
     enabled: preferencesStore.isModuleEnabled('workspace'),
     requiresAuth: true,

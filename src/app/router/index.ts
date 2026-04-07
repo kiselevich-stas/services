@@ -12,7 +12,7 @@ import {profileRoutes} from "../../modules/profile";
 import { useAuthStore} from "../../stores/auth.ts";
 import SettingsPage from "../../pages/settings/ui/SettingsPage.vue";
 import {usePreferencesStore} from "../../stores/preferences.ts";
-import {meetingsRoutes} from "../../modules/meetings";
+import {spacesRoutes} from "../../modules/spaces";
 
 export const router = createRouter({
     history: createWebHashHistory(),
@@ -20,7 +20,7 @@ export const router = createRouter({
         ...countdownRoutes,
         ...weatherRoutes,
         ...profileRoutes,
-        ...meetingsRoutes,
+        ...spacesRoutes,
 
         {
             path: '/',
