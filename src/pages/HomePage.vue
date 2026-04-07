@@ -3,9 +3,11 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import CountdownModulePreview from '../components/preview/CountdownModulePreview.vue'
-import WeatherModulePreview from '../modules/weather/components/WeatherModulePreview.vue'
+import WorkspaceModulePreview from '../components/preview/WorkspaceModulePreview.vue'
+import WeatherModulePreview from "../components/preview/WeatherModulePreview.vue";
 import { usePreferencesStore } from '../stores/preferences.ts'
 import { useAuthStore } from '../stores/auth.ts'
+import MeetingModulePreview from "../components/preview/MeetingModulePreview.vue";
 
 const router = useRouter()
 const preferencesStore = usePreferencesStore()
@@ -15,6 +17,14 @@ const isAuthorized = computed(() => Boolean(authStore.user))
 
 const modules = computed(() => [
   {
+    title: 'Погода',
+    description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
+    route: '/weather',
+    theme: 'weather',
+    enabled: true,
+    requiresAuth: false,
+  },
+  {
     title: 'Таймеры',
     description: 'Создавай, отслеживай и управляй обратными отсчётами в одном месте',
     route: '/countdowns',
@@ -23,12 +33,20 @@ const modules = computed(() => [
     requiresAuth: true,
   },
   {
-    title: 'Погода',
-    description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
-    route: '/weather',
-    theme: 'weather',
-    enabled: true,
-    requiresAuth: false,
+    title: 'Рабочее пространство',
+    description: 'Управляй личными данными, настройками и быстрым доступом к своим возможностям',
+    route: '/workspace',
+    theme: 'workspace',
+    enabled: preferencesStore.isModuleEnabled('workspace'),
+    requiresAuth: true,
+  },
+  {
+    title: 'Встречи',
+    description: 'Планируй встречи с друзьями, договаривайся о времени и храни всё в одном месте',
+    route: '/meeting',
+    theme: 'meeting',
+    enabled: preferencesStore.isModuleEnabled('meeting'),
+    requiresAuth: true,
   },
 ].filter(module => module.enabled))
 
@@ -67,6 +85,8 @@ function goTo(route: string, requiresAuth: boolean) {
           <div class="module-card__preview">
             <CountdownModulePreview v-if="module.theme === 'countdowns'" />
             <WeatherModulePreview v-else-if="module.theme === 'weather'" />
+            <WorkspaceModulePreview v-else-if="module.theme === 'workspace'" />
+            <MeetingModulePreview v-else-if="module.theme === 'meeting'" />
           </div>
 
           <div class="module-card__content">
@@ -205,6 +225,19 @@ function goTo(route: string, requiresAuth: boolean) {
   &:hover {
     border-color: rgba(56, 189, 248, 0.38);
     box-shadow: 0 18px 45px rgba(56, 189, 248, 0.14);
+  }
+}
+
+.module-card--workspace {
+  background:
+      radial-gradient(circle at 18% 18%, rgba(244, 114, 182, 0.22), transparent 28%),
+      radial-gradient(circle at 80% 22%, rgba(168, 85, 247, 0.20), transparent 32%),
+      radial-gradient(circle at 70% 85%, rgba(59, 130, 246, 0.16), transparent 36%),
+      rgba(255, 255, 255, 0.04);
+
+  &:hover {
+    border-color: rgba(192, 132, 252, 0.4);
+    box-shadow: 0 18px 45px rgba(168, 85, 247, 0.18);
   }
 }
 

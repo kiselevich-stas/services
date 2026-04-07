@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { usePreferencesStore, type AppModule} from "../../../stores/preferences.ts";
+import { usePreferencesStore, type AppModule } from '../../../stores/preferences.ts'
 
-import SettingsModulesHeader from "../../../components/settings/SettingsModulesHeader.vue";
-import SettingsModuleCard from "../../../components/settings/SettingsModuleCard.vue";
-import SettingsModulesSkeleton from "../../../components/settings/SettingsModulesSkeleton.vue";
+import SettingsModulesHeader from '../../../components/settings/SettingsModulesHeader.vue'
+import SettingsModuleCard from '../../../components/settings/SettingsModuleCard.vue'
+import SettingsModulesSkeleton from '../../../components/settings/SettingsModulesSkeleton.vue'
 
 import { SETTINGS_MODULE_ITEMS } from '../model/moduleItems'
 
@@ -21,6 +21,7 @@ async function onToggleModule(module: AppModule, value: boolean) {
     console.error('Не удалось сохранить настройки модуля:', error)
   }
 }
+
 onMounted(async () => {
   if (!preferencesStore.initialized) {
     await preferencesStore.loadSettings()
