@@ -77,7 +77,6 @@ import { useQuery } from '@tanstack/vue-query'
 import { searchCities, fetchWeather } from '../api/openMeteo.ts'
 import { useWeatherStore } from '../store/weather.ts'
 import type { City } from '../types.ts'
-import { showErrorToast } from '../../../lib/errors/showErrorToast'
 
 const weatherStore = useWeatherStore()
 
@@ -133,8 +132,7 @@ async function handleSelect(city: City): Promise<void> {
     weatherStore.setWeather(weatherData.current)
     weatherStore.setHourlyForecast(weatherData.hourly)
   } catch (error) {
-    console.error('Ошибка при получении погоды для выбранного города', error)
-    showErrorToast('Не удалось загрузить погоду для города', error)
+    console.error('РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё РїРѕРіРѕРґС‹ РґР»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ РіРѕСЂРѕРґР°', error)
   } finally {
     weatherStore.setIsDetectingCity(false)
   }
@@ -195,5 +193,3 @@ watch(searchValue, (value) => {
   opacity: 0.9;
 }
 </style>
-
-

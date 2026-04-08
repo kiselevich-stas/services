@@ -7,7 +7,6 @@ import { useAuthStore } from '../stores/auth.ts'
 import UiButton from '../components/ui/UiButton.vue'
 import UiInput from '../components/ui/UiInput.vue'
 import { useZodForm } from '../shared/composables/useZodForm'
-import { showErrorToast } from '../lib/errors/showErrorToast'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -84,7 +83,6 @@ async function handleLogin(): Promise<void> {
     await router.push('/')
   } catch (error) {
     submitError.value = getAuthErrorMessage(error)
-    showErrorToast('Не удалось выполнить вход', error, submitError.value)
   }
 }
 </script>

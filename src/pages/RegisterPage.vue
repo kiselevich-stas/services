@@ -6,7 +6,6 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.ts'
 import UiButton from '../components/ui/UiButton.vue'
 import UiInput from '../components/ui/UiInput.vue'
-import { showErrorToast } from '../lib/errors/showErrorToast'
 import { useZodForm } from '../shared/composables/useZodForm'
 
 const router = useRouter()
@@ -16,18 +15,18 @@ const registerSchema = z
     .object({
       email: z
           .string()
-          .min(1, '������� email')
-          .email('������� ���������� email'),
+          .min(1, 'Введите email')
+          .email('Введите корректный email'),
       password: z
           .string()
-          .min(1, '������� ������')
-          .min(6, '������ ������ ��������� ������� 6 ��������'),
+          .min(1, 'Введите пароль')
+          .min(6, 'Пароль должен содержать минимум 6 символов'),
       confirmPassword: z
           .string()
-          .min(1, '����������� ������'),
+          .min(1, 'Подтвердите пароль'),
     })
     .refine((data) => data.password === data.confirmPassword, {
-      message: '������ �� ���������',
+      message: 'Пароли не совпадают',
       path: ['confirmPassword'],
     })
 
@@ -57,24 +56,24 @@ const hasAnyErrors = computed(() => {
 
 function getRegisterErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
-    return '�� ������� ��������� �����������. ���������� ��� ���.'
+    return 'Не удалось выполнить регистрацию. Попробуйте ещё раз.'
   }
 
   const message = error.message.toLowerCase().trim()
 
   if (message.includes('user already registered')) {
-    return '������������ � ����� email ��� ���������������'
+    return 'Пользователь с таким email уже зарегистрирован'
   }
 
   if (message.includes('password should be at least')) {
-    return '������ ������� ��������'
+    return 'Пароль слишком короткий'
   }
 
   if (message.includes('failed to fetch')) {
-    return '�� ������� ������������ � �������. ��������� ��������-����������'
+    return 'Не удалось подключиться к серверу. Проверьте интернет-соединение'
   }
 
-  return '�� ������� ��������� �����������. ��������� �������� ������'
+  return 'Не удалось выполнить регистрацию. Проверьте введённые данные'
 }
 
 function handleFieldInput(fieldName: keyof RegisterFormValues): void {
@@ -97,7 +96,7 @@ async function handleRegister(): Promise<void> {
     await authStore.register(form.value.email, form.value.password)
 
     submitSuccess.value =
-        '����������� ������ �������. ��������� ����� ��� ������������� email.'
+        'Регистрация прошла успешно. Проверьте почту для подтверждения email.'
 
     form.value = {
       email: '',
@@ -112,7 +111,6 @@ async function handleRegister(): Promise<void> {
     }, 1500)
   } catch (error) {
     submitError.value = getRegisterErrorMessage(error)
-    showErrorToast('�� ������� ������������������', error, submitError.value)
   }
 }
 </script>
@@ -121,9 +119,9 @@ async function handleRegister(): Promise<void> {
   <div class="auth-page">
     <section class="panel auth-panel">
       <div class="panel__header">
-        <h1 class="panel__title">�����������</h1>
+        <h1 class="panel__title">Регистрация</h1>
         <p class="panel__text">
-          �������� �������, ����� ��������� ������ ����������
+          Создайте аккаунт, чтобы управлять своими ожиданиями
         </p>
       </div>
 
@@ -133,7 +131,7 @@ async function handleRegister(): Promise<void> {
             v-model="form.email"
             label="Email"
             type="email"
-            placeholder="������� email"
+            placeholder="Введите email"
             :error="formErrors.email"
             @blur="handleBlur('email')"
             @update:model-value="handleFieldInput('email')"
@@ -142,9 +140,9 @@ async function handleRegister(): Promise<void> {
         <UiInput
             id="password"
             v-model="form.password"
-            label="������"
+            label="Пароль"
             type="password"
-            placeholder="������� ������"
+            placeholder="Введите пароль"
             :error="formErrors.password"
             @blur="handleBlur('password')"
             @update:model-value="handleFieldInput('password')"
@@ -153,16 +151,16 @@ async function handleRegister(): Promise<void> {
         <UiInput
             id="confirmPassword"
             v-model="form.confirmPassword"
-            label="����������� ������"
+            label="Подтвердите пароль"
             type="password"
-            placeholder="��������� ������"
+            placeholder="Повторите пароль"
             :error="formErrors.confirmPassword"
             @blur="handleBlur('confirmPassword')"
             @update:model-value="handleFieldInput('confirmPassword')"
         />
 
         <UiButton
-            label="������������������"
+            label="Зарегистрироваться"
             variant="primary"
             size="md"
             type="submit"
@@ -179,13 +177,13 @@ async function handleRegister(): Promise<void> {
         </div>
 
         <p v-else-if="hasAnyErrors" class="auth-hint">
-          ��������� ���������� �����
+          Проверьте заполнение формы
         </p>
 
         <p class="auth-link-text">
-          ��� ���� �������?
+          Уже есть аккаунт?
           <RouterLink to="/login" class="auth-link">
-            �����
+            Войти
           </RouterLink>
         </p>
       </form>

@@ -1,73 +1,71 @@
-import axios from 'axios'
+import {
+    MutationCache,
+    QueryCache,
+    QueryClient,
+    type Query,
+    type Mutation,
+    type VueQueryPluginOptions,
+} from '@tanstack/vue-query'
+import { getErrorMessage} from "../../lib/errors/getErrorMessage.ts";
+import { useToastStore} from "../../stores/toast.ts";
 
-export function getErrorMessage(error: unknown): string {
-    if (axios.isAxiosError(error)) {
-        const responseMessage = extractResponseMessage(error.response?.data)
-
-        if (responseMessage) {
-            return responseMessage
-        }
-
-        if (error.code === 'ECONNABORTED') {
-            return 'Сервер отвечает слишком долго. Попробуйте ещё раз.'
-        }
-
-        if (!error.response) {
-            return 'Не удалось подключиться к серверу. Проверьте интернет или повторите попытку позже.'
-        }
-
-        switch (error.response.status) {
-            case 400:
-                return 'Запрос содержит ошибку. Проверьте данные и попробуйте снова.'
-            case 401:
-                return 'Нужно авторизоваться, чтобы продолжить.'
-            case 403:
-                return 'У вас нет доступа к этому действию.'
-            case 404:
-                return 'Ничего не найдено.'
-            case 409:
-                return 'Такое действие уже выполнено или данные конфликтуют с текущим состоянием.'
-            case 422:
-                return 'Некоторые поля заполнены некорректно.'
-            case 429:
-                return 'Слишком много запросов. Попробуйте чуть позже.'
-            case 500:
-            case 502:
-            case 503:
-            case 504:
-                return 'На сервере произошла ошибка. Попробуйте позже.'
-            default:
-                return 'Что-то пошло не так. Попробуйте ещё раз.'
-        }
-    }
-
-    if (error instanceof Error && error.message.trim()) {
-        return error.message
-    }
-
-    return 'Произошла неизвестная ошибка.'
+interface ToastMeta {
+    showErrorToast?: boolean
+    errorToastTitle?: string
 }
 
-function extractResponseMessage(data: unknown): string | null {
-    if (!data) {
-        return null
+function shouldShowErrorToast(meta: unknown): boolean {
+    return (meta as ToastMeta | undefined)?.showErrorToast !== false
+}
+
+function getErrorToastTitle(meta: unknown, fallbackTitle: string): string {
+    return (meta as ToastMeta | undefined)?.errorToastTitle ?? fallbackTitle
+}
+
+function handleQueryError(error: unknown, query: Query): void {
+    if (!shouldShowErrorToast(query.meta)) {
+        return
     }
 
-    if (typeof data === 'string' && data.trim()) {
-        return data
+    const toastStore = useToastStore()
+
+    toastStore.error(
+        getErrorToastTitle(query.meta, 'Ошибка загрузки данных'),
+        getErrorMessage(error),
+    )
+}
+
+function handleMutationError(error: unknown, mutation: Mutation<unknown, unknown, unknown, unknown>): void {
+    if (!shouldShowErrorToast(mutation.meta)) {
+        return
     }
 
-    if (typeof data === 'object') {
-        const maybeRecord = data as Record<string, unknown>
+    const toastStore = useToastStore()
 
-        if (typeof maybeRecord.message === 'string' && maybeRecord.message.trim()) {
-            return maybeRecord.message
-        }
+    toastStore.error(
+        getErrorToastTitle(mutation.meta, 'Не удалось выполнить действие'),
+        getErrorMessage(error),
+    )
+}
 
-        if (typeof maybeRecord.error === 'string' && maybeRecord.error.trim()) {
-            return maybeRecord.error
-        }
-    }
+const queryClient = new QueryClient({
+    queryCache: new QueryCache({
+        onError: handleQueryError,
+    }),
+    mutationCache: new MutationCache({
+        onError: (error, _variables, _context, mutation) => {
+            handleMutationError(error, mutation)
+        },
+    }),
+    defaultOptions: {
+        queries: {
+            retry: 1,
+            refetchOnWindowFocus: false,
+            staleTime: 1000 * 60 * 5,
+        },
+    },
+})
 
-    return null
+export const vueQueryOptions: VueQueryPluginOptions = {
+    queryClient,
 }
