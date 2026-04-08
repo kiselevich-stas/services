@@ -40,14 +40,6 @@ const modules = computed(() => [
     enabled: preferencesStore.isModuleEnabled('workspace'),
     requiresAuth: true,
   },
-  {
-    title: 'Встречи',
-    description: 'Планируй встречи с друзьями, договаривайся о времени и храни всё в одном месте',
-    route: '/meetings',
-    theme: 'meeting',
-    enabled: preferencesStore.isModuleEnabled('meeting'),
-    requiresAuth: true,
-  },
 ].filter(module => module.enabled))
 
 function goTo(route: string, requiresAuth: boolean) {
