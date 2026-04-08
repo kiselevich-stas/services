@@ -1,6 +1,5 @@
 import axios, { type AxiosInstance } from 'axios'
-import { useToastStore} from "../../stores/toast.ts";
-import { getErrorMessage} from "./getErrorMessage.ts";
+import { showErrorToast } from './showErrorToast'
 
 export function attachErrorToastInterceptor(
     instance: AxiosInstance,
@@ -9,13 +8,11 @@ export function attachErrorToastInterceptor(
     instance.interceptors.response.use(
         (response) => response,
         (error) => {
-            const toastStore = useToastStore()
-
             if (axios.isCancel(error)) {
                 return Promise.reject(error)
             }
 
-            toastStore.error(title, getErrorMessage(error))
+            showErrorToast(title, error)
 
             return Promise.reject(error)
         }

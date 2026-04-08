@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { showErrorToast } from '../../../lib/errors/showErrorToast'
 import { searchPlaces } from '../api/places.api'
 import type { MeetingPlace } from '../types'
 
@@ -19,7 +20,8 @@ export function usePlaceSearch() {
     try {
       items.value = await searchPlaces(query)
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'РћС€РёР±РєР° РїРѕРёСЃРєР°'
+      errorMessage.value = error instanceof Error ? error.message : 'Ошибка поиска'
+      showErrorToast('Не удалось найти места', error, errorMessage.value)
     } finally {
       isLoading.value = false
     }

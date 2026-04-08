@@ -9,6 +9,7 @@ import type { MeetingPlace } from '../types'
 import { toDatetimeLocalValue } from '../utils/date'
 import { useAuthStore } from '../../../stores/auth'
 import { supabase } from '../../../lib/supabase'
+import { showErrorToast } from '../../../lib/errors/showErrorToast'
 
 const router = useRouter()
 const meetingsStore = useMeetingsStore()

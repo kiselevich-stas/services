@@ -6,8 +6,7 @@ import {
     type Mutation,
     type VueQueryPluginOptions,
 } from '@tanstack/vue-query'
-import { getErrorMessage} from "../../lib/errors/getErrorMessage.ts";
-import { useToastStore} from "../../stores/toast.ts";
+import { showErrorToast } from '../../lib/errors/showErrorToast'
 
 interface ToastMeta {
     showErrorToast?: boolean
@@ -27,11 +26,9 @@ function handleQueryError(error: unknown, query: Query): void {
         return
     }
 
-    const toastStore = useToastStore()
-
-    toastStore.error(
+    showErrorToast(
         getErrorToastTitle(query.meta, 'Ошибка загрузки данных'),
-        getErrorMessage(error),
+        error,
     )
 }
 
@@ -40,11 +37,9 @@ function handleMutationError(error: unknown, mutation: Mutation<unknown, unknown
         return
     }
 
-    const toastStore = useToastStore()
-
-    toastStore.error(
+    showErrorToast(
         getErrorToastTitle(mutation.meta, 'Не удалось выполнить действие'),
-        getErrorMessage(error),
+        error,
     )
 }
 
