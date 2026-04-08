@@ -20,8 +20,8 @@ export function usePlaceSearch() {
     try {
       items.value = await searchPlaces(query)
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : 'Ошибка поиска'
-      showErrorToast('Не удалось найти места', error, errorMessage.value)
+      errorMessage.value = error instanceof Error ? error.message : 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ'
+      showErrorToast('пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ', error, errorMessage.value)
     } finally {
       isLoading.value = false
     }

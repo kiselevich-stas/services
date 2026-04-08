@@ -16,18 +16,18 @@ const registerSchema = z
     .object({
       email: z
           .string()
-          .min(1, 'Введите email')
-          .email('Введите корректный email'),
+          .min(1, 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ email')
+          .email('пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ email'),
       password: z
           .string()
-          .min(1, 'Введите пароль')
-          .min(6, 'Пароль должен содержать минимум 6 символов'),
+          .min(1, 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ')
+          .min(6, 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 6 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'),
       confirmPassword: z
           .string()
-          .min(1, 'Подтвердите пароль'),
+          .min(1, 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ'),
     })
     .refine((data) => data.password === data.confirmPassword, {
-      message: 'Пароли не совпадают',
+      message: 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ',
       path: ['confirmPassword'],
     })
 
@@ -57,24 +57,24 @@ const hasAnyErrors = computed(() => {
 
 function getRegisterErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) {
-    return 'Не удалось выполнить регистрацию. Попробуйте ещё раз.'
+    return 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ.'
   }
 
   const message = error.message.toLowerCase().trim()
 
   if (message.includes('user already registered')) {
-    return 'Пользователь с таким email уже зарегистрирован'
+    return 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ email пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'
   }
 
   if (message.includes('password should be at least')) {
-    return 'Пароль слишком короткий'
+    return 'пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'
   }
 
   if (message.includes('failed to fetch')) {
-    return 'Не удалось подключиться к серверу. Проверьте интернет-соединение'
+    return 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ'
   }
 
-  return 'Не удалось выполнить регистрацию. Проверьте введённые данные'
+  return 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ'
 }
 
 function handleFieldInput(fieldName: keyof RegisterFormValues): void {
@@ -97,7 +97,7 @@ async function handleRegister(): Promise<void> {
     await authStore.register(form.value.email, form.value.password)
 
     submitSuccess.value =
-        'Регистрация прошла успешно. Проверьте почту для подтверждения email.'
+        'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ email.'
 
     form.value = {
       email: '',
@@ -112,7 +112,7 @@ async function handleRegister(): Promise<void> {
     }, 1500)
   } catch (error) {
     submitError.value = getRegisterErrorMessage(error)
-    showErrorToast('Не удалось зарегистрироваться', error, submitError.value)
+    showErrorToast('пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ', error, submitError.value)
   }
 }
 </script>
@@ -121,9 +121,9 @@ async function handleRegister(): Promise<void> {
   <div class="auth-page">
     <section class="panel auth-panel">
       <div class="panel__header">
-        <h1 class="panel__title">Регистрация</h1>
+        <h1 class="panel__title">пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</h1>
         <p class="panel__text">
-          Создайте аккаунт, чтобы управлять своими ожиданиями
+          пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         </p>
       </div>
 
@@ -133,7 +133,7 @@ async function handleRegister(): Promise<void> {
             v-model="form.email"
             label="Email"
             type="email"
-            placeholder="Введите email"
+            placeholder="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ email"
             :error="formErrors.email"
             @blur="handleBlur('email')"
             @update:model-value="handleFieldInput('email')"
@@ -142,9 +142,9 @@ async function handleRegister(): Promise<void> {
         <UiInput
             id="password"
             v-model="form.password"
-            label="Пароль"
+            label="пїЅпїЅпїЅпїЅпїЅпїЅ"
             type="password"
-            placeholder="Введите пароль"
+            placeholder="пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ"
             :error="formErrors.password"
             @blur="handleBlur('password')"
             @update:model-value="handleFieldInput('password')"
@@ -153,16 +153,16 @@ async function handleRegister(): Promise<void> {
         <UiInput
             id="confirmPassword"
             v-model="form.confirmPassword"
-            label="Подтвердите пароль"
+            label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ"
             type="password"
-            placeholder="Повторите пароль"
+            placeholder="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ"
             :error="formErrors.confirmPassword"
             @blur="handleBlur('confirmPassword')"
             @update:model-value="handleFieldInput('confirmPassword')"
         />
 
         <UiButton
-            label="Зарегистрироваться"
+            label="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ"
             variant="primary"
             size="md"
             type="submit"
@@ -179,13 +179,13 @@ async function handleRegister(): Promise<void> {
         </div>
 
         <p v-else-if="hasAnyErrors" class="auth-hint">
-          Проверьте заполнение формы
+          пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         </p>
 
         <p class="auth-link-text">
-          Уже есть аккаунт?
+          пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
           <RouterLink to="/login" class="auth-link">
-            Войти
+            пїЅпїЅпїЅпїЅпїЅ
           </RouterLink>
         </p>
       </form>
