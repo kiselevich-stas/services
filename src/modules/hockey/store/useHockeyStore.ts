@@ -1,35 +1,44 @@
-import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { getUpcomingMatches } from '../api/hockey.functions'
+import { ref } from 'vue'
+import { getUpcomingMatches } from '../api/hockeyApi'
 import type { HockeyUpcomingMatch } from '../types'
+import { useToastStore} from "../../../stores/toast.ts";
 
 export const useHockeyStore = defineStore('hockey', () => {
-  const loading = ref(false)
-  const isLoaded = ref(false)
-  const upcomingMatches = ref<HockeyUpcomingMatch[]>([])
+  const matches = ref<HockeyUpcomingMatch[]>([])
+  const isLoading = ref(false)
+  const errorMessage = ref('')
 
-  async function loadUpcomingMatches(limit = 12): Promise<void> {
-    if (loading.value) return
+  const toast = useToastStore()
 
-    loading.value = true
+  async function fetchUpcomingMatches() {
+    isLoading.value = true
+    errorMessage.value = ''
 
     try {
-      upcomingMatches.value = await getUpcomingMatches(limit)
-      isLoaded.value = true
+      const response = await getUpcomingMatches()
+      matches.value = response
     } catch (error) {
-      console.error('Failed to load upcoming hockey matches:', error)
-      upcomingMatches.value = []
-      isLoaded.value = false
-      throw error
+      const message =
+          error instanceof Error
+              ? error.message
+              : 'Не удалось загрузить ближайшие матчи'
+
+      errorMessage.value = message
+
+      toast.error({
+        title: 'Ошибка загрузки',
+        message,
+      })
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
   return {
-    loading,
-    isLoaded,
-    upcomingMatches,
-    loadUpcomingMatches,
+    matches,
+    isLoading,
+    errorMessage,
+    fetchUpcomingMatches,
   }
 })
