@@ -6,18 +6,12 @@
         LIVE
       </div>
 
-      <div class="live-card__top-right">
-        <span v-if="match.stageName" class="live-card__stage">
-          {{ match.stageName }}
-        </span>
-
-        <span v-if="match.location" class="live-card__location">
-          {{ match.location }}
-        </span>
-      </div>
+      <span v-if="match.stageName" class="live-card__stage">
+        {{ match.stageName }}
+      </span>
     </div>
 
-    <div class="live-card__main">
+    <div class="live-card__teams">
       <div class="live-card__team">
         <img
             v-if="match.teamA?.image"
@@ -25,21 +19,15 @@
             :alt="match.teamA?.name || 'team-a'"
             class="live-card__logo"
         />
-        <div class="live-card__team-info">
-          <div class="live-card__team-name">
-            {{ match.teamA?.name || 'Команда 1' }}
-          </div>
-          <div class="live-card__team-city">
-            {{ match.teamA?.location || '' }}
-          </div>
-        </div>
+        <span class="live-card__team-name">
+          {{ match.teamA?.name || 'Команда 1' }}
+        </span>
       </div>
 
-      <div class="live-card__center">
+      <div class="live-card__score-wrap">
         <div class="live-card__score">
           {{ formattedScore }}
         </div>
-
         <div class="live-card__status">
           {{ liveStatusLabel }}
         </div>
@@ -52,20 +40,15 @@
             :alt="match.teamB?.name || 'team-b'"
             class="live-card__logo"
         />
-        <div class="live-card__team-info live-card__team-info--right">
-          <div class="live-card__team-name">
-            {{ match.teamB?.name || 'Команда 2' }}
-          </div>
-          <div class="live-card__team-city">
-            {{ match.teamB?.location || '' }}
-          </div>
-        </div>
+        <span class="live-card__team-name">
+          {{ match.teamB?.name || 'Команда 2' }}
+        </span>
       </div>
     </div>
 
     <div class="live-card__bottom">
-      <span>Статус: {{ match.gameStateKey || 'unknown' }}</span>
-      <span v-if="match.startAt">Начало: {{ formattedStartAt }}</span>
+      <span>{{ match.location || '—' }}</span>
+      <span v-if="match.startAt">{{ formattedStartAt }}</span>
     </div>
   </article>
 </template>
@@ -111,9 +94,9 @@ const liveStatusLabel = computed(() => {
 <style scoped lang="scss">
 .live-card {
   display: grid;
-  gap: 18px;
-  padding: 20px;
-  border-radius: 24px;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, rgba(13, 18, 35, 0.9), rgba(18, 25, 48, 0.95));
 }
@@ -121,55 +104,47 @@ const liveStatusLabel = computed(() => {
 .live-card__top {
   display: flex;
   justify-content: space-between;
-  align-items: start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .live-card__badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
   background: rgba(239, 68, 68, 0.16);
   color: #fca5a5;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .live-card__dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #ef4444;
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
 }
 
-.live-card__top-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.live-card__stage,
-.live-card__location {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
+.live-card__stage {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
   text-align: right;
 }
 
-.live-card__main {
+.live-card__teams {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
 }
 
 .live-card__team {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -177,67 +152,52 @@ const liveStatusLabel = computed(() => {
   justify-content: flex-end;
 }
 
-.live-card__team-info {
-  min-width: 0;
-}
-
-.live-card__team-info--right {
-  text-align: right;
-}
-
 .live-card__logo {
-  width: 52px;
-  height: 52px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .live-card__team-name {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
 }
 
-.live-card__team-city {
-  margin-top: 4px;
-  color: rgba(255, 255, 255, 0.64);
-  font-size: 13px;
-}
-
-.live-card__center {
+.live-card__score-wrap {
   display: grid;
-  gap: 10px;
   justify-items: center;
-  min-width: 120px;
+  gap: 6px;
+  min-width: 96px;
 }
 
 .live-card__score {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 800;
   line-height: 1;
   white-space: nowrap;
 }
 
 .live-card__status {
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: rgba(59, 130, 246, 0.14);
   color: #93c5fd;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .live-card__bottom {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding-top: 4px;
+  gap: 10px;
   color: rgba(255, 255, 255, 0.62);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 @media (max-width: 700px) {
-  .live-card__main {
+  .live-card__teams {
     grid-template-columns: 1fr;
     justify-items: center;
   }
@@ -247,16 +207,14 @@ const liveStatusLabel = computed(() => {
     justify-content: center;
   }
 
-  .live-card__team-info,
-  .live-card__team-info--right,
-  .live-card__top-right {
-    text-align: center;
-    align-items: center;
-  }
-
   .live-card__bottom {
     flex-direction: column;
     align-items: center;
+  }
+
+  .live-card__top {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
