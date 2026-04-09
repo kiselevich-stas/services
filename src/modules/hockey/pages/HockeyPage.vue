@@ -11,7 +11,7 @@
     </header>
 
     <section class="hockey-live">
-      <div class="hockey-live__top">
+      <div class="hockey-live__top" v-if="hockeyStore.liveMatches.length">
         <div>
           <h2 class="hockey-live__title">
             <span class="hockey-live__dot" />

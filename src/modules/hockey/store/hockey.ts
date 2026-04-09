@@ -2,7 +2,12 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUpcomingMatches } from '../api/hockeyApi'
 import { getLiveMatches } from '../api/getLiveMatches'
-import type { HockeyUpcomingMatch, HockeyMatch } from '../types'
+import { getMatchDetails } from '../api/getMatchDetails'
+import type {
+  HockeyUpcomingMatch,
+  HockeyMatch,
+  HockeyMatchDetails,
+} from '../types'
 import { useToastStore } from '../../../stores/toast.ts'
 
 export const hockey = defineStore('hockey', () => {
@@ -17,6 +22,11 @@ export const hockey = defineStore('hockey', () => {
   const isLiveInitialized = ref(false)
 
   const pollingIntervalId = ref<number | null>(null)
+
+  const matchDetails = ref<HockeyMatchDetails | null>(null)
+  const matchDetailsLoading = ref(false)
+  const matchDetailsError = ref('')
+  const currentMatchId = ref<number | string | null>(null)
 
   const toast = useToastStore()
 
@@ -106,6 +116,75 @@ export const hockey = defineStore('hockey', () => {
     }
   }
 
+  async function fetchMatchDetails(matchId: number | string, force = false) {
+    if (matchDetailsLoading.value) {
+      return
+    }
+
+    if (!force && currentMatchId.value === matchId && matchDetails.value) {
+      return
+    }
+
+    matchDetailsLoading.value = true
+    matchDetailsError.value = ''
+
+    try {
+      const response = await getMatchDetails(matchId, 'ru')
+
+      matchDetails.value = response ?? null
+      currentMatchId.value = matchId
+    } catch (error) {
+      const message =
+          error instanceof Error
+              ? error.message
+              : 'Не удалось загрузить страницу матча'
+
+      matchDetailsError.value = message
+
+      toast.error({
+        title: 'Ошибка загрузки матча',
+        message,
+      })
+    } finally {
+      matchDetailsLoading.value = false
+    }
+  }
+
+  async function refreshMatchDetails() {
+    if (!currentMatchId.value) {
+      return
+    }
+
+    matchDetailsLoading.value = true
+    matchDetailsError.value = ''
+
+    try {
+      const response = await getMatchDetails(currentMatchId.value, 'ru')
+
+      matchDetails.value = response ?? null
+    } catch (error) {
+      const message =
+          error instanceof Error
+              ? error.message
+              : 'Не удалось обновить страницу матча'
+
+      matchDetailsError.value = message
+
+      toast.error({
+        title: 'Ошибка обновления матча',
+        message,
+      })
+    } finally {
+      matchDetailsLoading.value = false
+    }
+  }
+
+  function clearMatchDetails() {
+    matchDetails.value = null
+    matchDetailsError.value = ''
+    currentMatchId.value = null
+  }
+
   function startLivePolling(intervalMs = 15_000) {
     if (typeof window === 'undefined') {
       return
@@ -141,5 +220,13 @@ export const hockey = defineStore('hockey', () => {
     refreshLiveMatches,
     startLivePolling,
     stopLivePolling,
+
+    matchDetails,
+    matchDetailsLoading,
+    matchDetailsError,
+    currentMatchId,
+    fetchMatchDetails,
+    refreshMatchDetails,
+    clearMatchDetails,
   }
 })

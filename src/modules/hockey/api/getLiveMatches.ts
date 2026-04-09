@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { supabase} from "../../../lib/supabase.ts";
 import type { GetLiveHockeyMatchesResponse } from '../types'
 
 export async function getLiveMatches(

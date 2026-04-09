@@ -1,8 +1,12 @@
 <template>
-  <article v-if="match" class="live-card">
+  <router-link
+      v-if="match"
+      :to="`/hockey/${match.id}`"
+      class="live-card"
+  >
     <div class="live-card__top">
       <div class="live-card__badge">
-        <span class="live-card__dot" />
+        <span class="live-card__dot"/>
         LIVE
       </div>
 
@@ -50,12 +54,12 @@
       <span>{{ match.location || '—' }}</span>
       <span v-if="match.startAt">{{ formattedStartAt }}</span>
     </div>
-  </article>
+  </router-link>
 </template>
 
 <script setup lang="ts">
-import { computed, toRef } from 'vue'
-import type { HockeyMatch } from '../types'
+import {computed, toRef} from 'vue'
+import type {HockeyMatch} from '../types'
 
 const props = defineProps<{
   match: HockeyMatch
@@ -99,6 +103,13 @@ const liveStatusLabel = computed(() => {
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(180deg, rgba(13, 18, 35, 0.9), rgba(18, 25, 48, 0.95));
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .live-card__top {
