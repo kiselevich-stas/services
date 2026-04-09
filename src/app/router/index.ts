@@ -14,7 +14,7 @@ import SettingsPage from "../../pages/settings/ui/SettingsPage.vue";
 import {usePreferencesStore} from "../../stores/preferences.ts";
 import {spacesRoutes} from "../../modules/spaces";
 import {worklogRoutes} from "../../modules/worklog";
-import {hockeyRoutes} from "../../modules/hockey";
+import {hockeyAnalyticsRoutes} from "../../modules/hockey";
 
 export const router = createRouter({
     history: createWebHashHistory(),
@@ -24,7 +24,7 @@ export const router = createRouter({
         ...profileRoutes,
         ...spacesRoutes,
         ...worklogRoutes,
-        ...hockeyRoutes,
+        ...hockeyAnalyticsRoutes,
 
         {
             path: '/',

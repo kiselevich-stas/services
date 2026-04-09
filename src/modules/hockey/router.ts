@@ -1,10 +1,10 @@
 import type { RouteRecordRaw } from 'vue-router'
-import HockeyHubPage from './pages/HockeyHubPage.vue'
+import HockeyPage from "./pages/HockeyPage.vue";
 
-export const hockeyRoutes: RouteRecordRaw[] = [
+export const hockeyAnalyticsRoutes: RouteRecordRaw[] = [
   {
     path: '/hockey',
-    name: 'hockey',
-    component: HockeyHubPage,
+    name: 'hockey-analytics',
+    component: HockeyPage,
   },
 ]

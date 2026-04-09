@@ -1,2 +1,1 @@
-export { hockeyRoutes } from './router'
-export { useHockeyStore } from './store/useHockeyStore'
+export { hockeyAnalyticsRoutes } from './router'
