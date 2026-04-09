@@ -6,6 +6,7 @@ import CountdownModulePreview from '../components/preview/CountdownModulePreview
 import WorkspaceModulePreview from '../components/preview/WorkspaceModulePreview.vue'
 import WeatherModulePreview from "../components/preview/WeatherModulePreview.vue";
 import WorklogModulePreview from "../components/preview/WorklogModulePreview.vue";
+import HockeyModulePreview from '../components/preview/HockeyModulePreview.vue'
 import { usePreferencesStore } from '../stores/preferences.ts'
 import { useAuthStore } from '../stores/auth.ts'
 
@@ -21,6 +22,14 @@ const modules = computed(() => [
     description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
     route: '/weather',
     theme: 'weather',
+    enabled: true,
+    requiresAuth: false,
+  },
+  {
+    title: 'KHL Head-to-Head',
+    description: 'Сравнивай команды, смотри личные встречи, победы, шайбы и последние матчи',
+    route: '/hockey',
+    theme: 'hockey',
     enabled: true,
     requiresAuth: false,
   },
@@ -86,7 +95,7 @@ function goTo(route: string, requiresAuth: boolean) {
             <CountdownModulePreview v-if="module.theme === 'countdowns'" />
             <WeatherModulePreview v-else-if="module.theme === 'weather'" />
             <WorkspaceModulePreview v-else-if="module.theme === 'workspace'" />
-            <MeetingModulePreview v-else-if="module.theme === 'meeting'" />
+            <HockeyModulePreview v-else-if="module.theme === 'hockey'" />
             <WorklogModulePreview v-else-if="module.theme === 'worklog'" />
           </div>
 
@@ -229,6 +238,19 @@ function goTo(route: string, requiresAuth: boolean) {
   }
 }
 
+.module-card--hockey {
+  background:
+      radial-gradient(circle at 12% 16%, rgba(34, 211, 238, 0.18), transparent 26%),
+      radial-gradient(circle at 82% 18%, rgba(236, 72, 153, 0.18), transparent 28%),
+      radial-gradient(circle at 70% 85%, rgba(59, 130, 246, 0.16), transparent 34%),
+      rgba(255, 255, 255, 0.04);
+
+  &:hover {
+    border-color: rgba(34, 211, 238, 0.35);
+    box-shadow: 0 18px 45px rgba(59, 130, 246, 0.16);
+  }
+}
+
 .module-card--workspace {
   background:
       radial-gradient(circle at 18% 18%, rgba(244, 114, 182, 0.22), transparent 28%),
@@ -261,130 +283,55 @@ function goTo(route: string, requiresAuth: boolean) {
   transform: none;
 }
 
-.module-card__preview {
-  position: relative;
-  z-index: 1;
-  min-height: 230px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.module-card__content {
-  position: relative;
-  z-index: 1;
-}
-
 .module-card__title {
-  margin: 0 0 10px;
-  font-size: 26px;
-  font-weight: 700;
+  margin: 0 0 12px;
+  font-size: 28px;
 }
 
 .module-card__description {
   margin: 0;
-  max-width: 500px;
-  font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.65;
   color: rgba(255, 255, 255, 0.72);
 }
 
 .module-card__overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 24px;
-  background: rgba(7, 11, 22, 0.38);
-}
-
-.module-card__overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.03) 0%,
-          rgba(255, 255, 255, 0.01) 100%
-  );
-  pointer-events: none;
+  z-index: 2;
+  background: rgba(7, 17, 31, 0.38);
+  backdrop-filter: blur(6px);
 }
 
 .module-card__overlay-content {
-  position: relative;
-  z-index: 1;
-  max-width: 300px;
+  max-width: 280px;
   text-align: center;
 }
 
 .module-card__overlay-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  padding: 0 10px;
-  margin-bottom: 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.58);
+  margin-bottom: 12px;
 }
 
 .module-card__overlay-title {
-  margin-bottom: 10px;
   font-size: 22px;
   font-weight: 700;
-  line-height: 1.2;
-  color: #ffffff;
+  margin-bottom: 10px;
 }
 
 .module-card__overlay-description {
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.72);
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.7);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 980px) {
   .modules-grid {
     grid-template-columns: 1fr;
-  }
-
-  .module-card {
-    min-height: 380px;
-  }
-}
-
-@media (max-width: 640px) {
-  .home__title {
-    font-size: 28px;
-  }
-
-  .module-card {
-    min-height: auto;
-    padding: 20px;
-    border-radius: 24px;
-  }
-
-  .module-card__title {
-    font-size: 22px;
-  }
-
-  .module-card__overlay {
-    padding: 20px;
-  }
-
-  .module-card__overlay-title {
-    font-size: 20px;
-  }
-
-  .module-card__overlay-description {
-    font-size: 13px;
   }
 }
 </style>
