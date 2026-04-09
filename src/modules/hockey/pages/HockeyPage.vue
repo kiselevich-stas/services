@@ -10,8 +10,8 @@
       </div>
     </header>
 
-    <section class="hockey-live">
-      <div class="hockey-live__top" v-if="hockeyStore.liveMatches.length">
+    <section class="hockey-live" v-if="hockeyStore.liveMatches.length">
+      <div class="hockey-live__top" >
         <div>
           <h2 class="hockey-live__title">
             <span class="hockey-live__dot" />
@@ -35,13 +35,6 @@
           class="hockey-page__empty"
       >
         {{ hockeyStore.liveError }}
-      </div>
-
-      <div
-          v-else-if="!hockeyStore.loadingLive && !hockeyStore.liveMatches.length"
-          class="hockey-page__empty"
-      >
-        Сейчас нет матчей в прямом эфире
       </div>
 
       <div v-else-if="hockeyStore.liveMatches.length" class="hockey-live__grid">
