@@ -21,9 +21,15 @@ export const SETTINGS_MODULE_ITEMS: SettingsModuleItem[] = [
         badge: 'Опционально',
     },
     {
-        key: 'meeting',
-        title: 'Meeting',
-        description: 'Модуль встреч и участия в них.',
+        key: 'spaces',
+        title: 'Пространства',
+        description: 'Модуль пространств.',
+        badge: 'Опционально',
+    },
+    {
+        key: 'worklog',
+        title: 'Учет времени',
+        description: 'Модуль учета времени.',
         badge: 'Опционально',
     },
 ]

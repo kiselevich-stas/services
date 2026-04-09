@@ -3,19 +3,23 @@ import { computed, ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
-export type AppModule = 'countdown' | 'workspace' | 'meeting'
+export type AppModule = 'countdown' | 'workspace' | 'worklog' | 'spaces'
 
 export interface UserSettingsRow {
     user_id: string
-    countdown_enabled: boolean
-    workspace_enabled: boolean
-    meeting_enabled: boolean
+    countdown_enabled?: boolean | null
+    workspace_enabled?: boolean | null
+    worklog_enabled?: boolean | null
+    spaces_enabled?: boolean | null
+    updated_at?: string | null
+    created_at?: string | null
 }
 
 const DEFAULT_SETTINGS = {
     countdownEnabled: true,
     workspaceEnabled: true,
-    meetingEnabled: true,
+    worklogEnabled: true,
+    spacesEnabled: true,
 } as const
 
 export const usePreferencesStore = defineStore('preferences', () => {
@@ -27,23 +31,27 @@ export const usePreferencesStore = defineStore('preferences', () => {
     const savingModules = ref<Record<AppModule, boolean>>({
         countdown: false,
         workspace: false,
-        meeting: false,
+        worklog: false,
+        spaces: false,
     })
 
     const countdownEnabled = ref(DEFAULT_SETTINGS.countdownEnabled)
     const workspaceEnabled = ref(DEFAULT_SETTINGS.workspaceEnabled)
-    const meetingEnabled = ref(DEFAULT_SETTINGS.meetingEnabled)
+    const worklogEnabled = ref(DEFAULT_SETTINGS.worklogEnabled)
+    const spacesEnabled = ref(DEFAULT_SETTINGS.spacesEnabled)
 
     const modules = computed<Record<AppModule, boolean>>(() => ({
         countdown: countdownEnabled.value,
         workspace: workspaceEnabled.value,
-        meeting: meetingEnabled.value,
+        worklog: worklogEnabled.value,
+        spaces: spacesEnabled.value,
     }))
 
-    function fillFromRow(row: UserSettingsRow) {
-        countdownEnabled.value = row.countdown_enabled
-        workspaceEnabled.value = row.workspace_enabled
-        meetingEnabled.value = row.meeting_enabled
+    function fillFromRow(row: UserSettingsRow): void {
+        countdownEnabled.value = row.countdown_enabled ?? DEFAULT_SETTINGS.countdownEnabled
+        workspaceEnabled.value = row.workspace_enabled ?? DEFAULT_SETTINGS.workspaceEnabled
+        worklogEnabled.value = row.worklog_enabled ?? DEFAULT_SETTINGS.worklogEnabled
+        spacesEnabled.value = row.worklog_enabled ?? DEFAULT_SETTINGS.spacesEnabled
     }
 
     function isModuleEnabled(module: AppModule): boolean {
@@ -54,40 +62,45 @@ export const usePreferencesStore = defineStore('preferences', () => {
         return savingModules.value[module]
     }
 
-    function resetToDefault() {
+    function resetToDefault(): void {
         countdownEnabled.value = DEFAULT_SETTINGS.countdownEnabled
         workspaceEnabled.value = DEFAULT_SETTINGS.workspaceEnabled
-        meetingEnabled.value = DEFAULT_SETTINGS.meetingEnabled
+        worklogEnabled.value = DEFAULT_SETTINGS.worklogEnabled
+        spacesEnabled.value = DEFAULT_SETTINGS.spacesEnabled
 
         initialized.value = false
 
         savingModules.value = {
             countdown: false,
             workspace: false,
-            meeting: false,
+            worklog: false,
+            spaces: false,
         }
     }
 
-    async function createDefaultSettings(userId: string) {
+    async function createDefaultSettings(userId: string): Promise<void> {
+        const payload = {
+            user_id: userId,
+            countdown_enabled: DEFAULT_SETTINGS.countdownEnabled,
+            workspace_enabled: DEFAULT_SETTINGS.workspaceEnabled,
+            worklog_enabled: DEFAULT_SETTINGS.worklogEnabled,
+            spaces_enabled: DEFAULT_SETTINGS.spacesEnabled,
+        }
+
         const { data, error } = await supabase
             .from('user_settings')
-            .insert({
-                user_id: userId,
-                countdown_enabled: DEFAULT_SETTINGS.countdownEnabled,
-                workspace_enabled: DEFAULT_SETTINGS.workspaceEnabled,
-                meeting_enabled: DEFAULT_SETTINGS.meetingEnabled,
-            })
-            .select('user_id, countdown_enabled, workspace_enabled, meeting_enabled')
+            .insert(payload)
+            .select('*')
             .single()
 
         if (error) {
             throw error
         }
 
-        fillFromRow(data)
+        fillFromRow(data as UserSettingsRow)
     }
 
-    async function saveSettings() {
+    async function saveSettings(): Promise<void> {
         const userId = authStore.user?.id
 
         if (!userId) {
@@ -100,7 +113,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
                 user_id: userId,
                 countdown_enabled: countdownEnabled.value,
                 workspace_enabled: workspaceEnabled.value,
-                meeting_enabled: meetingEnabled.value,
+                worklog_enabled: worklogEnabled.value,
+                spaces_enabled: spacesEnabled.value,
                 updated_at: new Date().toISOString(),
             })
 
@@ -109,7 +123,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
         }
     }
 
-    async function loadSettings() {
+    async function loadSettings(): Promise<void> {
         const userId = authStore.user?.id
 
         if (!userId) {
@@ -123,7 +137,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
         try {
             const { data, error } = await supabase
                 .from('user_settings')
-                .select('user_id, countdown_enabled, workspace_enabled, meeting_enabled')
+                .select('*')
                 .eq('user_id', userId)
                 .maybeSingle()
 
@@ -134,7 +148,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
             if (!data) {
                 await createDefaultSettings(userId)
             } else {
-                fillFromRow(data)
+                fillFromRow(data as UserSettingsRow)
             }
 
             initialized.value = true
@@ -143,7 +157,7 @@ export const usePreferencesStore = defineStore('preferences', () => {
         }
     }
 
-    function setModuleValue(module: AppModule, value: boolean) {
+    function setModuleValue(module: AppModule, value: boolean): void {
         switch (module) {
             case 'countdown':
                 countdownEnabled.value = value
@@ -151,8 +165,11 @@ export const usePreferencesStore = defineStore('preferences', () => {
             case 'workspace':
                 workspaceEnabled.value = value
                 break
-            case 'meeting':
-                meetingEnabled.value = value
+            case 'worklog':
+                worklogEnabled.value = value
+                break
+            case 'spaces':
+                spacesEnabled.value = value
                 break
         }
     }
@@ -163,12 +180,14 @@ export const usePreferencesStore = defineStore('preferences', () => {
                 return countdownEnabled.value
             case 'workspace':
                 return workspaceEnabled.value
-            case 'meeting':
-                return meetingEnabled.value
+            case 'worklog':
+                return worklogEnabled.value
+            case 'spaces':
+                return spacesEnabled.value
         }
     }
 
-    async function updateModule(module: AppModule, value: boolean) {
+    async function updateModule(module: AppModule, value: boolean): Promise<void> {
         const previousValue = getModuleValue(module)
 
         if (previousValue === value || savingModules.value[module]) {
@@ -193,7 +212,8 @@ export const usePreferencesStore = defineStore('preferences', () => {
         modules,
         countdownEnabled,
         workspaceEnabled,
-        meetingEnabled,
+        worklogEnabled,
+        spacesEnabled,
         loadSettings,
         updateModule,
         resetToDefault,

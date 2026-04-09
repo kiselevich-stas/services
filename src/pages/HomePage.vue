@@ -5,9 +5,9 @@ import { useRouter } from 'vue-router'
 import CountdownModulePreview from '../components/preview/CountdownModulePreview.vue'
 import WorkspaceModulePreview from '../components/preview/WorkspaceModulePreview.vue'
 import WeatherModulePreview from "../components/preview/WeatherModulePreview.vue";
+import WorklogModulePreview from "../components/preview/WorklogModulePreview.vue";
 import { usePreferencesStore } from '../stores/preferences.ts'
 import { useAuthStore } from '../stores/auth.ts'
-import MeetingModulePreview from "../components/preview/MeetingModulePreview.vue";
 
 const router = useRouter()
 const preferencesStore = usePreferencesStore()
@@ -38,6 +38,14 @@ const modules = computed(() => [
     route: '/spaces',
     theme: 'workspace',
     enabled: preferencesStore.isModuleEnabled('workspace'),
+    requiresAuth: true,
+  },
+  {
+    title: 'Учет времени',
+    description: 'Фиксируй рабочие часы, анализируй нагрузку и смотри красивую статистику по проектам',
+    route: '/worklog',
+    theme: 'worklog',
+    enabled: preferencesStore.isModuleEnabled('worklog'),
     requiresAuth: true,
   },
 ].filter(module => module.enabled))
@@ -79,6 +87,7 @@ function goTo(route: string, requiresAuth: boolean) {
             <WeatherModulePreview v-else-if="module.theme === 'weather'" />
             <WorkspaceModulePreview v-else-if="module.theme === 'workspace'" />
             <MeetingModulePreview v-else-if="module.theme === 'meeting'" />
+            <WorklogModulePreview v-else-if="module.theme === 'worklog'" />
           </div>
 
           <div class="module-card__content">
@@ -232,7 +241,18 @@ function goTo(route: string, requiresAuth: boolean) {
     box-shadow: 0 18px 45px rgba(168, 85, 247, 0.18);
   }
 }
+.module-card--worklog {
+  background:
+      radial-gradient(circle at 18% 18%, rgba(236, 72, 153, 0.22), transparent 28%),
+      radial-gradient(circle at 80% 22%, rgba(139, 92, 246, 0.2), transparent 32%),
+      radial-gradient(circle at 72% 84%, rgba(6, 182, 212, 0.16), transparent 36%),
+      rgba(255, 255, 255, 0.04);
 
+  &:hover {
+    border-color: rgba(236, 72, 153, 0.38);
+    box-shadow: 0 18px 45px rgba(139, 92, 246, 0.18);
+  }
+}
 .module-card--locked {
   cursor: default;
 }
