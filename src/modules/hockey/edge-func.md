@@ -921,116 +921,224 @@ Deno.serve(async (req) => {
 
 # recalculate-elo
 ```
-import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-type Json = Record<string, unknown>;
-
-type RecalculateMode = "full_rebuild";
+type Json = Record<string, unknown>
+type RecalculateMode = "full_rebuild"
 
 type TeamRatingRow = {
-  team_id: string;
-  team_name: string;
-  season_id: string;
-  rating: number;
-  matches_played: number;
-  wins: number;
-  losses: number;
-  updated_at?: string;
-};
+  team_id: string
+  team_name: string
+  season_id: string
+  rating: number
+  matches_played: number
+  wins: number
+  losses: number
+  updated_at?: string
+}
 
 type NormalizedMatch = {
-  matchId: string;
-  seasonId: string | null;
-  stageId: string | null;
-  stageName: string | null;
-  matchDate: string;
-  homeTeamId: string;
-  homeTeamName: string;
-  awayTeamId: string;
-  awayTeamName: string;
-  homeScore: number;
-  awayScore: number;
-};
+  matchId: string
+  seasonId: string | null
+  stageId: string | null
+  stageName: string | null
+  matchDate: string
+  homeTeamId: string
+  homeTeamName: string
+  awayTeamId: string
+  awayTeamName: string
+  homeScore: number
+  awayScore: number
+}
 
-type MobileStageRow = {
-  id: string;
-  khlId: string | null;
-  title: string;
-  type: string;
-  season: string;
-};
+type SeasonConfigRow = {
+  season_id: string
+  season_label: string
+  regular_stage_id: string | null
+  regular_stage_name: string | null
+  playoff_stage_id: string | null
+  playoff_stage_name: string | null
+  is_active: boolean
+  source: string
+}
 
-type CurrentSeasonStages = {
-  seasonId: string;
-  seasonName: string;
-  regularStage: MobileStageRow | null;
-  playoffStage: MobileStageRow | null;
-  stagesUsed: MobileStageRow[];
-};
+type StageConfig = {
+  id: string
+  title: string
+  type: "regular" | "playoff"
+}
 
-const START_RATING = 1500;
-const K_FACTOR = 20;
-const HOME_ADVANTAGE = 50;
+type DbEnvelope<T> = {
+  data?: T | null
+  error?: {
+    message?: string
+    details?: string
+    hint?: string
+    code?: string
+  } | null
+  count?: number | null
+  status?: number
+  statusText?: string
+}
+
+const START_RATING = 1500
+const K_FACTOR = 20
+const HOME_ADVANTAGE = 50
+const CACHE_TTL_HOURS = 24
 
 const corsHeaders = {
   "Content-Type": "application/json",
-};
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+}
 
-function toNumber(value: unknown, fallback = 0): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+function hockeyDb(supabase: SupabaseClient) {
+  return supabase.schema("hockey")
+}
 
-  if (typeof value === "string" && value.trim() !== "") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
+function safeStringify(value: unknown) {
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return String(value)
+  }
+}
+
+function logStep(step: string, payload?: unknown) {
+  if (payload === undefined) {
+    console.log(`[recalculate-elo] ${step}`)
+    return
   }
 
-  return fallback;
+  console.log(`[recalculate-elo] ${step}: ${safeStringify(payload)}`)
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
+function formatDbError(error: DbEnvelope<unknown>["error"]) {
+  if (!error) return "Unknown database error"
+
+  const parts = [
+    error.message,
+    error.details,
+    error.hint,
+    error.code ? `code=${error.code}` : null,
+  ].filter(Boolean)
+
+  return parts.join(" | ")
+}
+
+async function execDb<T>(
+  step: string,
+  queryFactory: () => PromiseLike<unknown> | Promise<unknown>,
+): Promise<DbEnvelope<T>> {
+  logStep(`${step}:start`)
+
+  let rawResponse: unknown
+
+  try {
+    rawResponse = await queryFactory()
+  } catch (error) {
+    throw new Error(`[${step}] Query execution failed: ${getErrorMessage(error)}`)
+  }
+
+  logStep(`${step}:raw_response`, rawResponse)
+
+  if (rawResponse == null || typeof rawResponse !== "object") {
+    throw new Error(`[${step}] Query returned null/undefined or non-object response`)
+  }
+
+  return rawResponse as DbEnvelope<T>
+}
+
+async function dbSelectOne<T>(
+  step: string,
+  queryFactory: () => PromiseLike<unknown> | Promise<unknown>,
+): Promise<T | null> {
+  const response = await execDb<T>(step, queryFactory)
+
+  if (response.error) {
+    throw new Error(`[${step}] ${formatDbError(response.error)}`)
+  }
+
+  return (response.data ?? null) as T | null
+}
+
+async function dbSelectMany<T>(
+  step: string,
+  queryFactory: () => PromiseLike<unknown> | Promise<unknown>,
+): Promise<T[]> {
+  const response = await execDb<T[]>(step, queryFactory)
+
+  if (response.error) {
+    throw new Error(`[${step}] ${formatDbError(response.error)}`)
+  }
+
+  if (!Array.isArray(response.data)) {
+    throw new Error(`[${step}] Expected array in data`)
+  }
+
+  return response.data
+}
+
+async function dbExec(
+  step: string,
+  queryFactory: () => PromiseLike<unknown> | Promise<unknown>,
+) {
+  const response = await execDb<unknown>(step, queryFactory)
+
+  if (response.error) {
+    throw new Error(`[${step}] ${formatDbError(response.error)}`)
+  }
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) return parsed
+  }
+
+  return fallback
 }
 
 function toStringSafe(value: unknown, fallback = ""): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  return fallback;
-}
-
-function toBoolean(value: unknown): boolean {
-  return value === true || value === "true" || value === 1 || value === "1";
+  if (typeof value === "string") return value
+  if (typeof value === "number") return String(value)
+  return fallback
 }
 
 function extractArray(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload)) return payload
 
   if (payload && typeof payload === "object") {
-    const obj = payload as Record<string, unknown>;
+    const obj = payload as Record<string, unknown>
 
-    if (Array.isArray(obj.data)) return obj.data;
-    if (Array.isArray(obj.items)) return obj.items;
-    if (Array.isArray(obj.events)) return obj.events;
-    if (Array.isArray(obj.seasons)) return obj.seasons;
-    if (Array.isArray(obj.stages)) return obj.stages;
-    if (Array.isArray(obj.list)) return obj.list;
+    if (Array.isArray(obj.data)) return obj.data
+    if (Array.isArray(obj.items)) return obj.items
+    if (Array.isArray(obj.events)) return obj.events
+    if (Array.isArray(obj.seasons)) return obj.seasons
+    if (Array.isArray(obj.stages)) return obj.stages
+    if (Array.isArray(obj.list)) return obj.list
   }
 
-  return [];
+  return []
 }
 
 function unwrapEvent(raw: Json): Json {
-  return ((raw.event as Json | undefined) ?? raw) as Json;
-}
-
-function normalizeSeasonLabel(value: string): string {
-  return value.trim();
-}
-
-function parseSeasonLabel(label: string): { startYear: number; endYear: number } | null {
-  const match = label.match(/^(\d{4})\s*\/\s*(\d{4})$/);
-  if (!match) return null;
-
-  return {
-    startYear: Number(match[1]),
-    endYear: Number(match[2]),
-  };
+  return ((raw.event as Json | undefined) ?? raw) as Json
 }
 
 function parseMatchDate(source: Json): string | null {
@@ -1038,69 +1146,69 @@ function parseMatchDate(source: Json): string | null {
     source.start_at ??
     source.start_at_iso ??
     source.date_start ??
-    source.datetime;
+    source.datetime
 
   if (typeof startAt === "number" && Number.isFinite(startAt)) {
-    return new Date(startAt).toISOString();
+    return new Date(startAt).toISOString()
   }
 
   if (typeof startAt === "string" && startAt.trim() !== "") {
-    const asNumber = Number(startAt);
+    const asNumber = Number(startAt)
 
     if (Number.isFinite(asNumber)) {
-      return new Date(asNumber).toISOString();
+      return new Date(asNumber).toISOString()
     }
 
-    const parsed = new Date(startAt);
+    const parsed = new Date(startAt)
     if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString();
+      return parsed.toISOString()
     }
   }
 
   const unixSeconds =
     toNumber(source.start_at_time_from_unixtime, NaN) ||
     toNumber(source.start_at_unix, NaN) ||
-    toNumber(source.timestamp, NaN);
+    toNumber(source.timestamp, NaN)
 
   if (Number.isFinite(unixSeconds)) {
-    return new Date(unixSeconds * 1000).toISOString();
+    return new Date(unixSeconds * 1000).toISOString()
   }
 
-  return null;
+  return null
 }
 
 function parseScore(source: Json): { homeScore: number; awayScore: number } | null {
   let homeScore = toNumber(
     source.score_a ?? source.team_a_score ?? source.score1 ?? source.home_score,
     NaN,
-  );
+  )
 
   let awayScore = toNumber(
     source.score_b ?? source.team_b_score ?? source.score2 ?? source.away_score,
     NaN,
-  );
+  )
 
   if (Number.isFinite(homeScore) && Number.isFinite(awayScore)) {
-    return { homeScore, awayScore };
+    return { homeScore, awayScore }
   }
 
-  const scoreText = toStringSafe(source.score ?? source.sscore);
-  const match = scoreText.match(/^(\d+)\s*:\s*(\d+)$/);
+  const scoreText = toStringSafe(source.score ?? source.sscore)
+  const match = scoreText.match(/^(\d+)\s*:\s*(\d+)$/)
 
-  if (!match) return null;
+  if (!match) return null
 
-  homeScore = Number(match[1]);
-  awayScore = Number(match[2]);
+  homeScore = Number(match[1])
+  awayScore = Number(match[2])
 
   if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
-    return null;
+    return null
   }
 
-  return { homeScore, awayScore };
+  return { homeScore, awayScore }
 }
 
 function isFinishedMatch(raw: Json): boolean {
-  const source = unwrapEvent(raw);
+  const source = unwrapEvent(raw)
 
   const state = toStringSafe(
     source.game_state_key ??
@@ -1108,90 +1216,68 @@ function isFinishedMatch(raw: Json): boolean {
       source.status_code ??
       source.state ??
       source.match_state,
-  ).toLowerCase();
+  ).toLowerCase()
 
   if (["not_yet_started", "scheduled", "soon", "created"].includes(state)) {
-    return false;
+    return false
   }
 
-  const parsedDate = parseMatchDate(source);
-  if (!parsedDate) return false;
+  const parsedDate = parseMatchDate(source)
+  if (!parsedDate) return false
 
   if (new Date(parsedDate).getTime() > Date.now()) {
-    return false;
+    return false
   }
 
-  const parsedScore = parseScore(source);
-  if (!parsedScore) return false;
+  const parsedScore = parseScore(source)
+  if (!parsedScore) return false
 
   if (parsedScore.homeScore === parsedScore.awayScore) {
-    return false;
+    return false
   }
 
-  return true;
-}
-
-function normalizeMobileStage(raw: Json): MobileStageRow | null {
-  const id = toStringSafe(raw.id);
-  if (!id) return null;
-
-  const title = toStringSafe(raw.title ?? raw.name);
-  const type = toStringSafe(raw.type).toLowerCase();
-  const season = normalizeSeasonLabel(toStringSafe(raw.season));
-  if (!season) return null;
-
-  return {
-    id,
-    khlId: toStringSafe(raw.khl_id) || null,
-    title,
-    type,
-    season,
-  };
+  return true
 }
 
 function normalizeEvent(raw: Json): NormalizedMatch | null {
-  const source = unwrapEvent(raw);
+  const source = unwrapEvent(raw)
 
-  if (!isFinishedMatch(source)) return null;
+  if (!isFinishedMatch(source)) return null
 
-  const id = toStringSafe(source.id ?? source.match_id);
-  if (!id) return null;
+  const id = toStringSafe(source.id ?? source.match_id)
+  if (!id) return null
 
-  const stageObj = (source.stage as Json | undefined) ?? {};
-  const seasonObj = (source.season as Json | undefined) ?? {};
+  const stageObj = (source.stage as Json | undefined) ?? {}
+  const seasonObj = (source.season as Json | undefined) ?? {}
 
-  const stageId = toStringSafe(source.stage_id ?? stageObj.id ?? "") || null;
-  const seasonId = toStringSafe(source.season_id ?? seasonObj.id ?? "") || null;
+  const stageId = toStringSafe(source.stage_id ?? stageObj.id ?? "") || null
+  const seasonId = toStringSafe(source.season_id ?? seasonObj.id ?? "") || null
   const stageName = toStringSafe(
     stageObj.name ?? stageObj.title ?? source.stage_name ?? "",
-  ) || null;
+  ) || null
 
-  const matchDate = parseMatchDate(source);
-  if (!matchDate) return null;
+  const matchDate = parseMatchDate(source)
+  if (!matchDate) return null
 
-  const teamA = (source.team_a as Json | undefined) ?? {};
-  const teamB = (source.team_b as Json | undefined) ?? {};
+  const teamA = (source.team_a as Json | undefined) ?? {}
+  const teamB = (source.team_b as Json | undefined) ?? {}
 
-  const homeTeamId = toStringSafe(teamA.id ?? source.team_a_id ?? source.home_team_id);
-  const awayTeamId = toStringSafe(teamB.id ?? source.team_b_id ?? source.away_team_id);
+  const homeTeamId = toStringSafe(teamA.id ?? source.team_a_id ?? source.home_team_id)
+  const awayTeamId = toStringSafe(teamB.id ?? source.team_b_id ?? source.away_team_id)
 
   const homeTeamName = toStringSafe(
     teamA.name ?? source.team_a_name ?? source.home_team_name,
-  );
+  )
   const awayTeamName = toStringSafe(
     teamB.name ?? source.team_b_name ?? source.away_team_name,
-  );
+  )
 
   if (!homeTeamId || !awayTeamId || !homeTeamName || !awayTeamName) {
-    return null;
+    return null
   }
 
-  const parsedScore = parseScore(source);
-  if (!parsedScore) return null;
-
-  if (parsedScore.homeScore === parsedScore.awayScore) {
-    return null;
-  }
+  const parsedScore = parseScore(source)
+  if (!parsedScore) return null
 
   return {
     matchId: id,
@@ -1205,12 +1291,12 @@ function normalizeEvent(raw: Json): NormalizedMatch | null {
     awayTeamName,
     homeScore: parsedScore.homeScore,
     awayScore: parsedScore.awayScore,
-  };
+  }
 }
 
 function getExpectedScore(homeRating: number, awayRating: number): number {
-  const adjustedHome = homeRating + HOME_ADVANTAGE;
-  return 1 / (1 + 10 ** ((awayRating - adjustedHome) / 400));
+  const adjustedHome = homeRating + HOME_ADVANTAGE
+  return 1 / (1 + 10 ** ((awayRating - adjustedHome) / 400))
 }
 
 function calculateNextRatings(
@@ -1218,151 +1304,113 @@ function calculateNextRatings(
   awayRating: number,
   homeWon: boolean,
 ) {
-  const expectedHome = getExpectedScore(homeRating, awayRating);
-  const expectedAway = 1 - expectedHome;
+  const expectedHome = getExpectedScore(homeRating, awayRating)
+  const expectedAway = 1 - expectedHome
 
-  const actualHome = homeWon ? 1 : 0;
-  const actualAway = homeWon ? 0 : 1;
+  const actualHome = homeWon ? 1 : 0
+  const actualAway = homeWon ? 0 : 1
 
-  const newHome = homeRating + K_FACTOR * (actualHome - expectedHome);
-  const newAway = awayRating + K_FACTOR * (actualAway - expectedAway);
+  const newHome = homeRating + K_FACTOR * (actualHome - expectedHome)
+  const newAway = awayRating + K_FACTOR * (actualAway - expectedAway)
 
   return {
     expectedHome,
     expectedAway,
     newHome: Number(newHome.toFixed(2)),
     newAway: Number(newAway.toFixed(2)),
-  };
+  }
 }
 
 async function fetchJson(url: string): Promise<unknown> {
-  console.log("[recalculate-elo] FETCH URL:", url);
+  logStep("fetchJson", { url })
 
   const response = await fetch(url, {
     headers: {
       Accept: "application/json",
     },
-  });
+  })
 
   if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-    console.error("[recalculate-elo] FETCH FAILED:", {
-      url,
-      status: response.status,
-      statusText: response.statusText,
-      body: responseText,
-    });
-
+    const responseText = await response.text().catch(() => "")
     throw new Error(
       `KHL API error: ${response.status} ${response.statusText}. URL: ${url}. BODY: ${responseText}`,
-    );
+    )
   }
 
-  return await response.json();
+  return await response.json()
 }
 
-function getCurrentSeasonLabelFromStages(stages: MobileStageRow[]): string {
-  const now = new Date();
-  const currentYear = now.getUTCFullYear();
-  const currentMonth = now.getUTCMonth() + 1;
-
-  const expectedLabel =
-    currentMonth >= 8
-      ? `${currentYear}/${currentYear + 1}`
-      : `${currentYear - 1}/${currentYear}`;
-
-  const exactMatch = stages.find((stage) => stage.season === expectedLabel);
-  if (exactMatch) return expectedLabel;
-
-  const uniqueSeasons = Array.from(new Set(stages.map((stage) => stage.season)));
-
-  uniqueSeasons.sort((a, b) => {
-    const parsedA = parseSeasonLabel(a);
-    const parsedB = parseSeasonLabel(b);
-
-    if (!parsedA && !parsedB) return 0;
-    if (!parsedA) return 1;
-    if (!parsedB) return -1;
-
-    if (parsedA.endYear !== parsedB.endYear) {
-      return parsedB.endYear - parsedA.endYear;
-    }
-
-    return parsedB.startYear - parsedA.startYear;
-  });
-
-  if (!uniqueSeasons.length) {
-    throw new Error("No season labels found in stages_v2");
+async function updateJobState(
+  supabase: SupabaseClient,
+  payload: Record<string, unknown>,
+) {
+  try {
+    await dbExec("updateJobState", () =>
+      hockeyDb(supabase)
+        .from("elo_job_state")
+        .upsert(payload, { onConflict: "job_name" }),
+    )
+  } catch (error) {
+    console.error("[recalculate-elo] updateJobState failed:", error)
   }
-
-  return uniqueSeasons[0];
 }
 
-async function fetchCurrentSeasonStagesFromDataJson(
-  baseUrl: string,
-  locale: string,
-): Promise<CurrentSeasonStages> {
-  const url = new URL(`${baseUrl}/data.json`);
-  url.searchParams.set("locale", locale);
+async function fetchSeasonConfig(
+  supabase: SupabaseClient,
+  seasonId: string,
+): Promise<SeasonConfigRow> {
+  const data = await dbSelectOne<SeasonConfigRow>("fetchSeasonConfig", () =>
+    hockeyDb(supabase)
+      .from("elo_seasons")
+      .select("*")
+      .eq("season_id", seasonId)
+      .single(),
+  )
 
-  const payload = await fetchJson(url.toString());
-
-  if (!payload || typeof payload !== "object") {
-    throw new Error("Invalid data.json response");
+  if (!data) {
+    throw new Error(`[fetchSeasonConfig] Season config not found for ${seasonId}`)
   }
 
-  const rawStages = Array.isArray((payload as Record<string, unknown>).stages_v2)
-    ? ((payload as Record<string, unknown>).stages_v2 as unknown[])
-    : [];
+  return data
+}
 
-  const stages = rawStages
-    .map((item) => normalizeMobileStage((item ?? {}) as Json))
-    .filter((item): item is MobileStageRow => Boolean(item));
+async function fetchAllSeasonConfigs(
+  supabase: SupabaseClient,
+): Promise<SeasonConfigRow[]> {
+  const rows = await dbSelectMany<SeasonConfigRow>("fetchAllSeasonConfigs", () =>
+    hockeyDb(supabase)
+      .from("elo_seasons")
+      .select("*")
+      .order("season_id", { ascending: false }),
+  )
+
+  return rows.filter((item) => item.regular_stage_id || item.playoff_stage_id)
+}
+
+function buildStageConfigs(seasonConfig: SeasonConfigRow): StageConfig[] {
+  const stages: StageConfig[] = []
+
+  if (seasonConfig.regular_stage_id) {
+    stages.push({
+      id: seasonConfig.regular_stage_id,
+      title: seasonConfig.regular_stage_name ?? "Регулярный чемпионат",
+      type: "regular",
+    })
+  }
+
+  if (seasonConfig.playoff_stage_id) {
+    stages.push({
+      id: seasonConfig.playoff_stage_id,
+      title: seasonConfig.playoff_stage_name ?? "Плей-офф",
+      type: "playoff",
+    })
+  }
 
   if (!stages.length) {
-    throw new Error("No stages_v2 returned from data.json");
+    throw new Error(`No regular/playoff stages configured for season ${seasonConfig.season_id}`)
   }
 
-  const currentSeasonLabel = getCurrentSeasonLabelFromStages(stages);
-
-  const currentSeasonStages = stages.filter(
-    (stage) => normalizeSeasonLabel(stage.season) === currentSeasonLabel,
-  );
-
-  if (!currentSeasonStages.length) {
-    throw new Error(`No stages found for current season ${currentSeasonLabel}`);
-  }
-
-  const regularStage =
-    currentSeasonStages.find((stage) => stage.type === "regular") ??
-    currentSeasonStages.find((stage) => stage.title.toLowerCase().includes("регуляр")) ??
-    null;
-
-  const playoffStage =
-    currentSeasonStages.find((stage) => stage.type === "playoff") ??
-    currentSeasonStages.find((stage) => {
-      const title = stage.title.toLowerCase();
-      return title.includes("плей") || title.includes("кубок");
-    }) ??
-    null;
-
-  const stagesUsed = [regularStage, playoffStage].filter(
-    (stage): stage is MobileStageRow => Boolean(stage),
-  );
-
-  if (!stagesUsed.length) {
-    throw new Error(
-      `No regular/playoff stage IDs found for current season ${currentSeasonLabel}`,
-    );
-  }
-
-  return {
-    seasonId: currentSeasonLabel,
-    seasonName: currentSeasonLabel,
-    regularStage,
-    playoffStage,
-    stagesUsed,
-  };
+  return stages
 }
 
 async function fetchAllFinishedMatchesByStage(
@@ -1370,358 +1418,573 @@ async function fetchAllFinishedMatchesByStage(
   stageId: string,
   locale: string,
 ): Promise<NormalizedMatch[]> {
-  const allMatches: NormalizedMatch[] = [];
-  let page = 1;
+  const allMatches: NormalizedMatch[] = []
+  let page = 1
 
   while (true) {
-    const url = new URL(`${baseUrl}/events_v2.json`);
-    url.searchParams.set("stage_id", stageId);
-    url.searchParams.set("page", String(page));
-    url.searchParams.set("order_direction", "asc");
-    url.searchParams.set("locale", locale);
-    url.searchParams.set("application", "khl_web");
+    const url = new URL(`${baseUrl}/events_v2.json`)
+    url.searchParams.set("stage_id", stageId)
+    url.searchParams.set("page", String(page))
+    url.searchParams.set("order_direction", "asc")
+    url.searchParams.set("locale", locale)
+    url.searchParams.set("application", "khl_web")
 
-    const payload = await fetchJson(url.toString());
-    const rawItems = extractArray(payload);
+    const payload = await fetchJson(url.toString())
+    const rawItems = extractArray(payload)
 
-    if (!rawItems.length) break;
+    logStep("fetchAllFinishedMatchesByStage:page", {
+      stageId,
+      page,
+      rawItemsCount: rawItems.length,
+    })
+
+    if (!rawItems.length) break
 
     const normalizedPage = rawItems
       .map((item) => normalizeEvent((item ?? {}) as Json))
-      .filter((item): item is NormalizedMatch => Boolean(item));
+      .filter((item): item is NormalizedMatch => Boolean(item))
 
-    allMatches.push(...normalizedPage);
+    allMatches.push(...normalizedPage)
 
-    page += 1;
+    page += 1
 
-    if (rawItems.length < 16) break;
+    if (rawItems.length < 16) break
   }
 
-  return allMatches;
+  return allMatches
 }
 
-async function fetchAllFinishedMatchesForCurrentSeason(
+async function fetchAllFinishedMatchesForSeason(
   baseUrl: string,
   locale: string,
+  seasonConfig: SeasonConfigRow,
 ): Promise<{
-  seasonId: string;
-  seasonName: string;
-  matches: NormalizedMatch[];
-  stagesUsed: MobileStageRow[];
+  seasonId: string
+  seasonName: string
+  matches: NormalizedMatch[]
+  stagesUsed: StageConfig[]
 }> {
-  const { seasonId, seasonName, stagesUsed } =
-    await fetchCurrentSeasonStagesFromDataJson(baseUrl, locale);
+  const stagesUsed = buildStageConfigs(seasonConfig)
+  const matchesMap = new Map<string, NormalizedMatch>()
 
-  const matchesMap = new Map<string, NormalizedMatch>();
+  logStep("fetchAllFinishedMatchesForSeason:start", {
+    seasonId: seasonConfig.season_id,
+    stagesUsed,
+  })
 
   for (const stage of stagesUsed) {
-    const stageMatches = await fetchAllFinishedMatchesByStage(baseUrl, stage.id, locale);
+    const stageMatches = await fetchAllFinishedMatchesByStage(baseUrl, stage.id, locale)
+
+    logStep("fetchAllFinishedMatchesForSeason:stageLoaded", {
+      seasonId: seasonConfig.season_id,
+      stageId: stage.id,
+      stageTitle: stage.title,
+      matchesCount: stageMatches.length,
+    })
 
     for (const match of stageMatches) {
       matchesMap.set(match.matchId, {
         ...match,
-        seasonId,
+        seasonId: seasonConfig.season_id,
         stageId: match.stageId ?? stage.id,
         stageName: match.stageName ?? stage.title,
-      });
+      })
     }
   }
 
-  const matches = Array.from(matchesMap.values());
+  const matches = Array.from(matchesMap.values())
 
   matches.sort((a, b) => {
-    const byDate = new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime();
-    if (byDate !== 0) return byDate;
-    return a.matchId.localeCompare(b.matchId);
-  });
+    const byDate = new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
+    if (byDate !== 0) return byDate
+    return a.matchId.localeCompare(b.matchId)
+  })
 
   return {
-    seasonId,
+    seasonId: seasonConfig.season_id,
+    seasonName: seasonConfig.season_label,
+    matches,
+    stagesUsed,
+  }
+}
+
+function buildCacheKey(seasonId: string) {
+  return `elo:${seasonId}:regular+playoff`
+}
+
+async function getValidCache(
+  supabase: SupabaseClient,
+  seasonId: string,
+): Promise<Record<string, unknown> | null> {
+  const cacheKey = buildCacheKey(seasonId)
+
+  return await dbSelectOne<Record<string, unknown>>("getValidCache", () =>
+    hockeyDb(supabase)
+      .from("elo_rebuild_cache")
+      .select("*")
+      .eq("cache_key", cacheKey)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle(),
+  )
+}
+
+async function saveCache(
+  supabase: SupabaseClient,
+  seasonId: string,
+  payload: Record<string, unknown>,
+) {
+  const cacheKey = buildCacheKey(seasonId)
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000)
+
+  await dbExec("saveCache", () =>
+    hockeyDb(supabase)
+      .from("elo_rebuild_cache")
+      .upsert(
+        {
+          cache_key: cacheKey,
+          season_id: seasonId,
+          calculated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          result: payload,
+        },
+        { onConflict: "cache_key" },
+      ),
+  )
+}
+
+async function deleteSeasonData(
+  supabase: SupabaseClient,
+  seasonId: string,
+) {
+  await dbExec("deleteSeasonData:snapshots", () =>
+    hockeyDb(supabase)
+      .from("elo_rating_snapshots")
+      .delete()
+      .eq("season_id", seasonId),
+  )
+
+  await dbExec("deleteSeasonData:matches", () =>
+    hockeyDb(supabase)
+      .from("elo_matches")
+      .delete()
+      .eq("season_id", seasonId),
+  )
+
+  await dbExec("deleteSeasonData:ratings", () =>
+    hockeyDb(supabase)
+      .from("elo_team_ratings")
+      .delete()
+      .eq("season_id", seasonId),
+  )
+}
+
+async function upsertEloMatches(
+  supabase: SupabaseClient,
+  rows: Json[],
+) {
+  if (!rows.length) return
+
+  await dbExec("upsertEloMatches", () =>
+    hockeyDb(supabase)
+      .from("elo_matches")
+      .upsert(rows, { onConflict: "match_id" }),
+  )
+}
+
+async function upsertSnapshots(
+  supabase: SupabaseClient,
+  rows: Json[],
+) {
+  if (!rows.length) return
+
+  await dbExec("upsertSnapshots", () =>
+    hockeyDb(supabase)
+      .from("elo_rating_snapshots")
+      .upsert(rows, { onConflict: "match_id,team_id" }),
+  )
+}
+
+async function upsertTeamRatings(
+  supabase: SupabaseClient,
+  rows: TeamRatingRow[],
+) {
+  if (!rows.length) return
+
+  await dbExec("upsertTeamRatings", () =>
+    hockeyDb(supabase)
+      .from("elo_team_ratings")
+      .upsert(rows, { onConflict: "team_id,season_id" }),
+  )
+}
+
+async function recalculateSingleSeason(
+  supabase: SupabaseClient,
+  khlBaseUrl: string,
+  khlLocale: string,
+  seasonId: string,
+  mode: RecalculateMode,
+  force: boolean,
+) {
+  logStep("recalculateSingleSeason:start", { seasonId, mode, force })
+
+  if (!force) {
+    const validCache = await getValidCache(supabase, seasonId)
+
+    if (validCache?.result) {
+      return {
+        ok: true,
+        fromCache: true,
+        seasonId,
+        ...(validCache.result as Record<string, unknown>),
+      }
+    }
+  }
+
+  const seasonConfig = await fetchSeasonConfig(supabase, seasonId)
+
+  const {
+    seasonId: resolvedSeasonId,
     seasonName,
     matches,
     stagesUsed,
-  };
+  } = await fetchAllFinishedMatchesForSeason(khlBaseUrl, khlLocale, seasonConfig)
+
+  if (mode === "full_rebuild") {
+    await deleteSeasonData(supabase, resolvedSeasonId)
+  }
+
+  const ratingsMap = new Map<string, TeamRatingRow>()
+  const eloMatchesRows: Json[] = []
+  const snapshotRows: Json[] = []
+
+  for (const match of matches) {
+    const homeKey = `${match.homeTeamId}:${resolvedSeasonId}`
+    const awayKey = `${match.awayTeamId}:${resolvedSeasonId}`
+
+    const existingHome = ratingsMap.get(homeKey) ?? {
+      team_id: match.homeTeamId,
+      team_name: match.homeTeamName,
+      season_id: resolvedSeasonId,
+      rating: START_RATING,
+      matches_played: 0,
+      wins: 0,
+      losses: 0,
+    }
+
+    const existingAway = ratingsMap.get(awayKey) ?? {
+      team_id: match.awayTeamId,
+      team_name: match.awayTeamName,
+      season_id: resolvedSeasonId,
+      rating: START_RATING,
+      matches_played: 0,
+      wins: 0,
+      losses: 0,
+    }
+
+    const homeWon = match.homeScore > match.awayScore
+    const ratingHomeBefore = existingHome.rating
+    const ratingAwayBefore = existingAway.rating
+
+    const { newHome, newAway } = calculateNextRatings(
+      ratingHomeBefore,
+      ratingAwayBefore,
+      homeWon,
+    )
+
+    const processedAt = new Date().toISOString()
+
+    const updatedHome: TeamRatingRow = {
+      ...existingHome,
+      team_name: match.homeTeamName,
+      season_id: resolvedSeasonId,
+      rating: newHome,
+      matches_played: existingHome.matches_played + 1,
+      wins: existingHome.wins + (homeWon ? 1 : 0),
+      losses: existingHome.losses + (homeWon ? 0 : 1),
+      updated_at: processedAt,
+    }
+
+    const updatedAway: TeamRatingRow = {
+      ...existingAway,
+      team_name: match.awayTeamName,
+      season_id: resolvedSeasonId,
+      rating: newAway,
+      matches_played: existingAway.matches_played + 1,
+      wins: existingAway.wins + (homeWon ? 0 : 1),
+      losses: existingAway.losses + (homeWon ? 1 : 0),
+      updated_at: processedAt,
+    }
+
+    ratingsMap.set(homeKey, updatedHome)
+    ratingsMap.set(awayKey, updatedAway)
+
+    eloMatchesRows.push({
+      match_id: match.matchId,
+      season_id: resolvedSeasonId,
+      stage_id: match.stageId,
+      stage_name: match.stageName,
+      match_date: match.matchDate,
+      home_team_id: match.homeTeamId,
+      home_team_name: match.homeTeamName,
+      away_team_id: match.awayTeamId,
+      away_team_name: match.awayTeamName,
+      home_score: match.homeScore,
+      away_score: match.awayScore,
+      winner_team_id: homeWon ? match.homeTeamId : match.awayTeamId,
+      rating_home_before: ratingHomeBefore,
+      rating_away_before: ratingAwayBefore,
+      rating_home_after: newHome,
+      rating_away_after: newAway,
+      processed_at: processedAt,
+    })
+
+    snapshotRows.push({
+      season_id: resolvedSeasonId,
+      stage_id: match.stageId,
+      stage_name: match.stageName,
+      match_id: match.matchId,
+      match_date: match.matchDate,
+      team_id: match.homeTeamId,
+      team_name: match.homeTeamName,
+      rating_before: ratingHomeBefore,
+      rating_after: newHome,
+      opponent_team_id: match.awayTeamId,
+      opponent_team_name: match.awayTeamName,
+      is_home: true,
+      team_score: match.homeScore,
+      opponent_score: match.awayScore,
+      result: homeWon ? "win" : "loss",
+    })
+
+    snapshotRows.push({
+      season_id: resolvedSeasonId,
+      stage_id: match.stageId,
+      stage_name: match.stageName,
+      match_id: match.matchId,
+      match_date: match.matchDate,
+      team_id: match.awayTeamId,
+      team_name: match.awayTeamName,
+      rating_before: ratingAwayBefore,
+      rating_after: newAway,
+      opponent_team_id: match.homeTeamId,
+      opponent_team_name: match.homeTeamName,
+      is_home: false,
+      team_score: match.awayScore,
+      opponent_score: match.homeScore,
+      result: homeWon ? "loss" : "win",
+    })
+  }
+
+  const ratingRows = Array.from(ratingsMap.values())
+
+  logStep("recalculateSingleSeason:preparedRows", {
+    matches: eloMatchesRows.length,
+    snapshots: snapshotRows.length,
+    ratings: ratingRows.length,
+  })
+
+  await upsertEloMatches(supabase, eloMatchesRows)
+  await upsertSnapshots(supabase, snapshotRows)
+  await upsertTeamRatings(supabase, ratingRows)
+
+  const responsePayload = {
+    function: "recalculate-elo",
+    mode,
+    fromCache: false,
+    seasonId: resolvedSeasonId,
+    seasonName,
+    matchesProcessed: eloMatchesRows.length,
+    teamsUpdated: ratingRows.length,
+    snapshotsInserted: snapshotRows.length,
+    stagesUsed: stagesUsed.map((stage) => ({
+      id: stage.id,
+      title: stage.title,
+      type: stage.type,
+    })),
+    calculatedAt: new Date().toISOString(),
+  }
+
+  await saveCache(supabase, resolvedSeasonId, responsePayload)
+
+  return {
+    ok: true,
+    ...responsePayload,
+  }
 }
 
 serve(async (req) => {
-  const startedAt = new Date().toISOString();
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      status: 200,
+      headers: corsHeaders,
+    })
+  }
+
+  const startedAt = new Date().toISOString()
+  let supabase: SupabaseClient | null = null
+  let currentStep = "init"
 
   try {
-    const body = await req.json().catch(() => ({}));
-    const mode = (body?.mode ?? "full_rebuild") as RecalculateMode;
+    currentStep = "parse_body"
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const khlBaseUrl = Deno.env.get("KHL_BASE_URL");
-    const khlLocale = Deno.env.get("KHL_LOCALE") ?? "ru";
+    let body: Record<string, unknown> = {}
+
+    try {
+      body = await req.json()
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          step: currentStep,
+          error: "Invalid JSON body",
+          details: getErrorMessage(error),
+        }),
+        {
+          headers: corsHeaders,
+          status: 400,
+        },
+      )
+    }
+
+    logStep("request:body", body)
+
+    const mode = (body?.mode ?? "full_rebuild") as RecalculateMode
+    const seasonId = typeof body?.season_id === "string" ? body.season_id : null
+    const processAllSeasons = Boolean(body?.process_all_seasons)
+    const force = Boolean(body?.force)
+
+    currentStep = "read_env"
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+    const khlBaseUrl = Deno.env.get("KHL_BASE_URL")
+    const khlLocale = Deno.env.get("KHL_LOCALE") ?? "ru"
 
     if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+      throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
     }
 
     if (!khlBaseUrl) {
-      throw new Error("Missing KHL_BASE_URL");
+      throw new Error("Missing KHL_BASE_URL")
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    if (!seasonId && !processAllSeasons) {
+      throw new Error("season_id is required unless process_all_seasons=true")
+    }
 
-    await supabase
-      .from("elo_job_state")
-      .upsert(
+    currentStep = "create_supabase_client"
+    supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+
+    currentStep = "update_job_state_started"
+    await updateJobState(supabase, {
+      job_name: "recalculate-elo",
+      last_run_at: startedAt,
+      updated_at: startedAt,
+      last_error: null,
+    })
+
+    if (processAllSeasons) {
+      currentStep = "fetch_all_seasons"
+      const seasons = await fetchAllSeasonConfigs(supabase)
+      const results: Record<string, unknown>[] = []
+
+      for (const season of seasons) {
+        try {
+          currentStep = `recalculate_season_${season.season_id}`
+
+          const result = await recalculateSingleSeason(
+            supabase,
+            khlBaseUrl,
+            khlLocale,
+            season.season_id,
+            mode,
+            force,
+          )
+
+          results.push(result)
+        } catch (error) {
+          results.push({
+            ok: false,
+            seasonId: season.season_id,
+            step: currentStep,
+            error: getErrorMessage(error),
+          })
+        }
+      }
+
+      currentStep = "update_job_state_success_all"
+      await updateJobState(supabase, {
+        job_name: "recalculate-elo",
+        last_run_at: startedAt,
+        last_success_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_error: null,
+      })
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          processAllSeasons: true,
+          seasonsProcessed: results.length,
+          results,
+        }),
         {
-          job_name: "recalculate-elo",
-          last_run_at: startedAt,
-          updated_at: startedAt,
-          last_error: null,
+          headers: corsHeaders,
+          status: 200,
         },
-        { onConflict: "job_name" },
-      );
-
-    const {
-      seasonId: currentSeasonId,
-      seasonName: currentSeasonName,
-      matches,
-      stagesUsed,
-    } = await fetchAllFinishedMatchesForCurrentSeason(khlBaseUrl, khlLocale);
-
-    if (mode === "full_rebuild") {
-      const { error: resetRatingsError } = await supabase
-        .from("elo_team_ratings")
-        .delete()
-        .eq("season_id", currentSeasonId);
-
-      if (resetRatingsError) throw resetRatingsError;
-
-      const { error: resetMatchesError } = await supabase
-        .from("elo_matches")
-        .delete()
-        .eq("season_id", currentSeasonId);
-
-      if (resetMatchesError) throw resetMatchesError;
-
-      const { error: resetSnapshotsError } = await supabase
-        .from("elo_rating_snapshots")
-        .delete()
-        .eq("season_id", currentSeasonId);
-
-      if (resetSnapshotsError) throw resetSnapshotsError;
+      )
     }
 
-    const ratingsMap = new Map<string, TeamRatingRow>();
-    const eloMatchesRows: Json[] = [];
-    const snapshotRows: Json[] = [];
+    currentStep = "recalculate_single_season"
 
-    for (const match of matches) {
-      const homeKey = `${match.homeTeamId}:${currentSeasonId}`;
-      const awayKey = `${match.awayTeamId}:${currentSeasonId}`;
+    const result = await recalculateSingleSeason(
+      supabase,
+      khlBaseUrl,
+      khlLocale,
+      seasonId as string,
+      mode,
+      force,
+    )
 
-      const existingHome = ratingsMap.get(homeKey) ?? {
-        team_id: match.homeTeamId,
-        team_name: match.homeTeamName,
-        season_id: currentSeasonId,
-        rating: START_RATING,
-        matches_played: 0,
-        wins: 0,
-        losses: 0,
-      };
+    currentStep = "update_job_state_success_single"
+    await updateJobState(supabase, {
+      job_name: "recalculate-elo",
+      last_run_at: startedAt,
+      last_success_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_error: null,
+    })
 
-      const existingAway = ratingsMap.get(awayKey) ?? {
-        team_id: match.awayTeamId,
-        team_name: match.awayTeamName,
-        season_id: currentSeasonId,
-        rating: START_RATING,
-        matches_played: 0,
-        wins: 0,
-        losses: 0,
-      };
-
-      const homeWon = match.homeScore > match.awayScore;
-
-      const ratingHomeBefore = existingHome.rating;
-      const ratingAwayBefore = existingAway.rating;
-
-      const { newHome, newAway } = calculateNextRatings(
-        ratingHomeBefore,
-        ratingAwayBefore,
-        homeWon,
-      );
-
-      const processedAt = new Date().toISOString();
-
-      const updatedHome: TeamRatingRow = {
-        ...existingHome,
-        team_name: match.homeTeamName,
-        season_id: currentSeasonId,
-        rating: newHome,
-        matches_played: existingHome.matches_played + 1,
-        wins: existingHome.wins + (homeWon ? 1 : 0),
-        losses: existingHome.losses + (homeWon ? 0 : 1),
-        updated_at: processedAt,
-      };
-
-      const updatedAway: TeamRatingRow = {
-        ...existingAway,
-        team_name: match.awayTeamName,
-        season_id: currentSeasonId,
-        rating: newAway,
-        matches_played: existingAway.matches_played + 1,
-        wins: existingAway.wins + (homeWon ? 0 : 1),
-        losses: existingAway.losses + (homeWon ? 1 : 0),
-        updated_at: processedAt,
-      };
-
-      ratingsMap.set(homeKey, updatedHome);
-      ratingsMap.set(awayKey, updatedAway);
-
-      eloMatchesRows.push({
-        match_id: match.matchId,
-        season_id: currentSeasonId,
-        stage_id: match.stageId,
-        stage_name: match.stageName,
-        match_date: match.matchDate,
-        home_team_id: match.homeTeamId,
-        home_team_name: match.homeTeamName,
-        away_team_id: match.awayTeamId,
-        away_team_name: match.awayTeamName,
-        home_score: match.homeScore,
-        away_score: match.awayScore,
-        winner_team_id: homeWon ? match.homeTeamId : match.awayTeamId,
-        rating_home_before: ratingHomeBefore,
-        rating_away_before: ratingAwayBefore,
-        rating_home_after: newHome,
-        rating_away_after: newAway,
-        processed_at: processedAt,
-      });
-
-      snapshotRows.push({
-        season_id: currentSeasonId,
-        stage_id: match.stageId,
-        stage_name: match.stageName,
-        match_id: match.matchId,
-        match_date: match.matchDate,
-        team_id: match.homeTeamId,
-        team_name: match.homeTeamName,
-        rating_before: ratingHomeBefore,
-        rating_after: newHome,
-        opponent_team_id: match.awayTeamId,
-        opponent_team_name: match.awayTeamName,
-        is_home: true,
-        team_score: match.homeScore,
-        opponent_score: match.awayScore,
-        result: homeWon ? "win" : "loss",
-      });
-
-      snapshotRows.push({
-        season_id: currentSeasonId,
-        stage_id: match.stageId,
-        stage_name: match.stageName,
-        match_id: match.matchId,
-        match_date: match.matchDate,
-        team_id: match.awayTeamId,
-        team_name: match.awayTeamName,
-        rating_before: ratingAwayBefore,
-        rating_after: newAway,
-        opponent_team_id: match.homeTeamId,
-        opponent_team_name: match.homeTeamName,
-        is_home: false,
-        team_score: match.awayScore,
-        opponent_score: match.homeScore,
-        result: homeWon ? "loss" : "win",
-      });
-    }
-
-    const ratingRows = Array.from(ratingsMap.values());
-
-    if (eloMatchesRows.length) {
-      const { error: matchesInsertError } = await supabase
-        .from("elo_matches")
-        .upsert(eloMatchesRows, { onConflict: "match_id" });
-
-      if (matchesInsertError) throw matchesInsertError;
-    }
-
-    if (snapshotRows.length) {
-      const { error: snapshotsInsertError } = await supabase
-        .from("elo_rating_snapshots")
-        .upsert(snapshotRows, { onConflict: "match_id,team_id" });
-
-      if (snapshotsInsertError) throw snapshotsInsertError;
-    }
-
-    if (ratingRows.length) {
-      const { error: ratingsUpsertError } = await supabase
-        .from("elo_team_ratings")
-        .upsert(ratingRows, { onConflict: "team_id,season_id" });
-
-      if (ratingsUpsertError) throw ratingsUpsertError;
-    }
-
-    await supabase
-      .from("elo_job_state")
-      .upsert(
-        {
-          job_name: "recalculate-elo",
-          last_run_at: startedAt,
-          last_success_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_error: null,
-        },
-        { onConflict: "job_name" },
-      );
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        function: "recalculate-elo",
-        mode,
-        seasonId: currentSeasonId,
-        seasonName: currentSeasonName,
-        matchesProcessed: eloMatchesRows.length,
-        teamsUpdated: ratingRows.length,
-        snapshotsInserted: snapshotRows.length,
-        stagesUsed: stagesUsed.map((stage) => ({
-          id: stage.id,
-          title: stage.title,
-          type: stage.type,
-          season: stage.season,
-          khlId: stage.khlId,
-        })),
-      }),
-      {
-        headers: corsHeaders,
-        status: 200,
-      },
-    );
+    return new Response(JSON.stringify(result), {
+      headers: corsHeaders,
+      status: 200,
+    })
   } catch (error) {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const message = getErrorMessage(error)
 
-    if (supabaseUrl && supabaseServiceRoleKey) {
-      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    console.error("[recalculate-elo] fatal error:", error)
 
-      await supabase
-        .from("elo_job_state")
-        .upsert(
-          {
-            job_name: "recalculate-elo",
-            last_run_at: startedAt,
-            updated_at: new Date().toISOString(),
-            last_error: error instanceof Error ? error.message : "Unknown error",
-          },
-          { onConflict: "job_name" },
-        );
+    if (supabase) {
+      await updateJobState(supabase, {
+        job_name: "recalculate-elo",
+        last_run_at: startedAt,
+        updated_at: new Date().toISOString(),
+        last_error: `[${currentStep}] ${message}`,
+      })
     }
 
     return new Response(
       JSON.stringify({
         ok: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        step: currentStep,
+        error: message,
       }),
       {
         headers: corsHeaders,
         status: 500,
       },
-    );
+    )
   }
-});
+})
 ```
