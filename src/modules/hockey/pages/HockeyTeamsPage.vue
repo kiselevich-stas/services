@@ -1,15 +1,6 @@
 <template>
   <section class="hockey-page">
     <UiBreadcrumbs :items="breadcrumbs" />
-    <header class="hockey-page__hero">
-      <div>
-        <p class="hockey-page__eyebrow">KHL Teams</p>
-        <h1>Команды по этапу</h1>
-        <p class="hockey-page__description">
-          Выберите сезон или стадию, чтобы посмотреть список команд.
-        </p>
-      </div>
-    </header>
 
     <HockeyFilterToolbar
         :options="stageSelectOptions"
@@ -47,11 +38,11 @@
         </div>
       </div>
 
-      <HockeyTeamsSlider
+      <HockeyTeamsBlock
           v-else
-          :teams="hockeyStore.teamCards"
-          :loading="hockeyStore.teamCardsLoading"
-          :error="hockeyStore.teamCardsError"
+          :items="hockeyStore.teamCards"
+          :is-loading="isInitialTeamsLoading"
+          :error-message="hockeyStore.teamCardsError"
           title="Команды"
           :subtitle="selectedStageLabel"
       />
@@ -61,11 +52,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
-import UiSelect from '../../../components/ui/UiSelect.vue'
-import HockeyTeamsSlider from '../components/teams/HockeyTeamsSlider.vue'
 import { hockey } from '../store/hockey.ts'
 import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 import HockeyFilterToolbar from "../components/toolbar/HockeyFilterToolbar.vue";
+import HockeyTeamsBlock from "../components/HockeyTeamsBlock.vue";
 
 const hockeyStore = hockey()
 

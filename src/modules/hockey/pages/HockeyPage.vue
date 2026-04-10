@@ -7,8 +7,8 @@ import HomeHockeyHero from '../components/home/HomeHockeyHero.vue'
 import HomeHockeyQuickLinks from '../components/home/HomeHockeyQuickLinks.vue'
 import HomeHockeyLiveSection from '../components/home/HomeHockeyLiveSection.vue'
 import HomeHockeyUpcomingSection from '../components/home/HomeHockeyUpcomingSection.vue'
-import HomeHockeyTeamsSection from '../components/home/HomeHockeyTeamsSection.vue'
 import HomeHockeyPageSkeleton from '../components/skeleton/HomeHockeyPageSkeleton.vue'
+import HockeyTeamsBlock from "../components/HockeyTeamsBlock.vue";
 
 const hockeyStore = hockey()
 
@@ -114,11 +114,11 @@ const breadcrumbs = computed(() => [
           :format-match-date="formatMatchDate"
       />
 
-      <HomeHockeyTeamsSection
+      <HockeyTeamsBlock
           :items="teamsPreview"
           :is-loading="hockeyStore.teamCardsLoading"
           :error-message="hockeyStore.teamCardsError"
-          :stage-label="selectedStageLabel"
+          :subtitle="selectedStageLabel"
       />
     </template>
   </section>

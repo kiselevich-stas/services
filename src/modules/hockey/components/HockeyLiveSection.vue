@@ -1,4 +1,4 @@
-<script setup lang="ts">
+ч<script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useHockeyStore } from '../store/hockey'
