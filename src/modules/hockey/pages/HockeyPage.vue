@@ -10,8 +10,8 @@
       </div>
     </header>
 
-    <section class="hockey-live" v-if="hockeyStore.liveMatches.length">
-      <div class="hockey-live__top" >
+    <section class="hockey-live" v-if="hockeyStore.liveMatches?.length">
+      <div class="hockey-live__top">
         <div>
           <h2 class="hockey-live__title">
             <span class="hockey-live__dot" />
@@ -31,18 +31,28 @@
       </div>
 
       <div
-          v-if="hockeyStore.liveError && !hockeyStore.liveMatches.length"
+          v-if="hockeyStore.liveError && !hockeyStore.liveMatches?.length"
           class="hockey-page__empty"
       >
         {{ hockeyStore.liveError }}
       </div>
 
-      <div v-else-if="hockeyStore.liveMatches.length" class="hockey-live__grid">
+      <div
+          v-else-if="hockeyStore.liveMatches?.length"
+          class="hockey-live__grid"
+      >
         <HockeyLiveMatchCard
             v-for="match in hockeyStore.liveMatches"
             :key="`live-${match.id}`"
             :match="match"
         />
+      </div>
+
+      <div
+          v-else
+          class="hockey-page__empty"
+      >
+        Сейчас нет матчей в прямом эфире
       </div>
     </section>
 
@@ -52,20 +62,20 @@
           <p class="hockey-page__eyebrow">KHL Schedule</p>
           <h2 class="hockey-upcoming__title">Ближайшие матчи</h2>
           <p class="hockey-upcoming__subtitle">
-            Предстоящие матчи текущего этапа сезона
+            Предстоящие матчи сезона
           </p>
         </div>
 
         <UiButton
             :loading="hockeyStore.isLoading"
-            @click="hockeyStore.fetchUpcomingMatches"
+            @click="hockeyStore.fetchUpcomingMatches()"
         >
           Обновить
         </UiButton>
       </div>
 
       <div
-          v-if="hockeyStore.isLoading && !hockeyStore.matches.length"
+          v-if="hockeyStore.isLoading && !hockeyStore.matches?.length"
           class="hockey-page__grid"
       >
         <HockeyMatchCardSkeleton
@@ -75,7 +85,14 @@
       </div>
 
       <div
-          v-else-if="!hockeyStore.matches.length"
+          v-else-if="hockeyStore.errorMessage && !hockeyStore.matches?.length"
+          class="hockey-page__empty hockey-upcoming__empty"
+      >
+        {{ hockeyStore.errorMessage }}
+      </div>
+
+      <div
+          v-else-if="!hockeyStore.matches?.length"
           class="hockey-page__empty hockey-upcoming__empty"
       >
         Пока нет доступных ближайших матчей
@@ -94,7 +111,7 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import UiButton from '../../spaces/components/ui/UiButton.vue'
+import UiButton from '../../../components/ui/UiButton.vue'
 import HockeyMatchCard from '../components/HockeyMatchCard.vue'
 import HockeyLiveMatchCard from '../components/HockeyLiveMatchCard.vue'
 import HockeyMatchCardSkeleton from '../components/HockeyMatchCardSkeleton.vue'
@@ -102,8 +119,8 @@ import { hockey } from '../store/hockey.ts'
 
 const hockeyStore = hockey()
 
-onMounted(() => {
-  if (!hockeyStore.matches.length) {
+onMounted(async () => {
+  if (!hockeyStore.matches?.length) {
     void hockeyStore.fetchUpcomingMatches()
   }
 
@@ -237,8 +254,8 @@ onUnmounted(() => {
     align-items: stretch;
   }
 
-  .hockey-live__grid,
-  .hockey-page__grid {
+  .hockey-page__grid,
+  .hockey-live__grid {
     grid-template-columns: 1fr;
   }
 }

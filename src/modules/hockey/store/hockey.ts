@@ -3,14 +3,22 @@ import { ref } from 'vue'
 import { getUpcomingMatches } from '../api/hockeyApi'
 import { getLiveMatches } from '../api/getLiveMatches'
 import { getMatchDetails } from '../api/getMatchDetails'
+import { getHockeySeasons } from '../api/getHockeySeasons'
+import { getTeamCards } from '../api/getTeamCards'
+
 import type {
   HockeyUpcomingMatch,
   HockeyMatch,
   HockeyMatchDetails,
+  HockeyStageOption,
+  HockeyTeamCard,
 } from '../types'
+
 import { useToastStore } from '../../../stores/toast.ts'
 
 export const hockey = defineStore('hockey', () => {
+  const toast = useToastStore()
+
   const matches = ref<HockeyUpcomingMatch[]>([])
   const isLoading = ref(false)
   const errorMessage = ref('')
@@ -28,7 +36,95 @@ export const hockey = defineStore('hockey', () => {
   const matchDetailsError = ref('')
   const currentMatchId = ref<number | string | null>(null)
 
-  const toast = useToastStore()
+  const stageOptions = ref<HockeyStageOption[]>([])
+  const stageOptionsLoading = ref(false)
+  const stageOptionsError = ref('')
+  const selectedStageId = ref<string | null>(null)
+
+  const teamCards = ref<HockeyTeamCard[]>([])
+  const teamCardsLoading = ref(false)
+  const teamCardsError = ref('')
+
+  function clearTeamCards() {
+    teamCards.value = []
+    teamCardsError.value = ''
+  }
+
+  function setSelectedStage(stageId: string | number | null | undefined) {
+    const normalizedStageId = stageId != null ? String(stageId) : null
+
+    if (selectedStageId.value === normalizedStageId) {
+      return
+    }
+
+    selectedStageId.value = normalizedStageId
+    clearTeamCards()
+  }
+
+  async function fetchStageOptions() {
+    if (stageOptionsLoading.value) {
+      return
+    }
+
+    stageOptionsLoading.value = true
+    stageOptionsError.value = ''
+
+    try {
+      const response = await getHockeySeasons()
+
+      stageOptions.value = Array.isArray(response?.items) ? response.items : []
+
+      if (response?.current_stage_id != null) {
+        setSelectedStage(response.current_stage_id)
+      } else if (!selectedStageId.value && stageOptions.value.length) {
+        setSelectedStage(stageOptions.value[0].id)
+      }
+    } catch (error) {
+      stageOptionsError.value =
+          error instanceof Error ? error.message : 'Не удалось загрузить стадии'
+
+      stageOptions.value = []
+      selectedStageId.value = null
+    } finally {
+      stageOptionsLoading.value = false
+    }
+  }
+
+  async function fetchTeamCards(force = false) {
+    if (teamCardsLoading.value) {
+      return
+    }
+
+    if (!selectedStageId.value) {
+      clearTeamCards()
+      return
+    }
+
+    if (!force && teamCards.value.length > 0) {
+      return
+    }
+
+    teamCardsLoading.value = true
+    teamCardsError.value = ''
+
+    try {
+      const cards = await getTeamCards(selectedStageId.value)
+      teamCards.value = cards
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Не удалось загрузить команды'
+
+      teamCardsError.value = message
+      teamCards.value = []
+
+      toast.error({
+        title: 'Ошибка загрузки команд',
+        message,
+      })
+    } finally {
+      teamCardsLoading.value = false
+    }
+  }
 
   async function fetchUpcomingMatches() {
     isLoading.value = true
@@ -36,7 +132,7 @@ export const hockey = defineStore('hockey', () => {
 
     try {
       const response = await getUpcomingMatches()
-      matches.value = response
+      matches.value = Array.isArray(response) ? response : []
     } catch (error) {
       const message =
           error instanceof Error
@@ -69,8 +165,8 @@ export const hockey = defineStore('hockey', () => {
     try {
       const response = await getLiveMatches(10, 'ru')
 
-      liveMatches.value = response.items ?? []
-      liveDebug.value = response.debug ?? null
+      liveMatches.value = Array.isArray(response?.items) ? response.items : []
+      liveDebug.value = response?.debug ?? null
       isLiveInitialized.value = true
     } catch (error) {
       const message =
@@ -90,14 +186,18 @@ export const hockey = defineStore('hockey', () => {
   }
 
   async function refreshLiveMatches() {
+    if (loadingLive.value) {
+      return
+    }
+
     loadingLive.value = true
     liveError.value = ''
 
     try {
       const response = await getLiveMatches(10, 'ru')
 
-      liveMatches.value = response.items ?? []
-      liveDebug.value = response.debug ?? null
+      liveMatches.value = Array.isArray(response?.items) ? response.items : []
+      liveDebug.value = response?.debug ?? null
       isLiveInitialized.value = true
     } catch (error) {
       const message =
@@ -151,7 +251,7 @@ export const hockey = defineStore('hockey', () => {
   }
 
   async function refreshMatchDetails() {
-    if (!currentMatchId.value) {
+    if (!currentMatchId.value || matchDetailsLoading.value) {
       return
     }
 
@@ -160,7 +260,6 @@ export const hockey = defineStore('hockey', () => {
 
     try {
       const response = await getMatchDetails(currentMatchId.value, 'ru')
-
       matchDetails.value = response ?? null
     } catch (error) {
       const message =
@@ -228,5 +327,18 @@ export const hockey = defineStore('hockey', () => {
     fetchMatchDetails,
     refreshMatchDetails,
     clearMatchDetails,
+
+    stageOptions,
+    stageOptionsLoading,
+    stageOptionsError,
+    selectedStageId,
+    fetchStageOptions,
+    setSelectedStage,
+
+    teamCards,
+    teamCardsLoading,
+    teamCardsError,
+    fetchTeamCards,
+    clearTeamCards,
   }
 })

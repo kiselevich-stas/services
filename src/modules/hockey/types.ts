@@ -13,6 +13,7 @@ export interface HockeyUpcomingMatch {
   teamA: HockeyUpcomingMatchTeam
   teamB: HockeyUpcomingMatchTeam
 }
+
 export type HockeyTeam = {
   id: number
   name: string
@@ -192,5 +193,29 @@ export type HockeyMatchDetails = {
       goals: number
       points: number
     }
+  }
+}
+
+export interface HockeyStageOption {
+  id: string
+  khl_id: number | null
+  season: string
+  title: string
+  type: string
+  label: string
+  is_current: boolean
+}
+
+export interface HockeyTeamCard {
+  team: {
+    id: number
+    khl_id: number | null
+    name: string
+    location: string | null
+    image: string | null
+    division: string | null
+    division_key: string | null
+    conference: string | null
+    conference_key: string | null
   }
 }

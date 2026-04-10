@@ -267,6 +267,8 @@ onBeforeUnmount(() => {
 }
 
 .ui-field__dropdown {
+  max-height: 320px;
+  overflow: auto;
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
