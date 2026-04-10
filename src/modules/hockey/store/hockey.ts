@@ -1,10 +1,15 @@
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+
 import { getUpcomingMatches } from '../api/hockeyApi'
 import { getLiveMatches } from '../api/getLiveMatches'
 import { getMatchDetails } from '../api/getMatchDetails'
 import { getHockeySeasons } from '../api/getHockeySeasons'
 import { getTeamCards } from '../api/getTeamCards'
+
+import { getEloSeasons } from '../api/getEloSeasons'
+import { getEloRating } from '../api/getEloRating'
+import { recalculateElo } from '../api/recalculateElo'
 
 import type {
   HockeyUpcomingMatch,
@@ -12,6 +17,8 @@ import type {
   HockeyMatchDetails,
   HockeyStageOption,
   HockeyTeamCard,
+  HockeyEloSeason,
+  HockeyEloRatingTeam,
 } from '../types'
 
 import { useToastStore } from '../../../stores/toast.ts'
@@ -44,6 +51,37 @@ export const hockey = defineStore('hockey', () => {
   const teamCards = ref<HockeyTeamCard[]>([])
   const teamCardsLoading = ref(false)
   const teamCardsError = ref('')
+
+  const eloSeasons = ref<HockeyEloSeason[]>([])
+  const eloSeasonsLoading = ref(false)
+  const eloSeasonsError = ref('')
+
+  const selectedEloSeasonId = ref<string | null>(null)
+  const currentEloSeasonId = ref<string | null>(null)
+
+  const eloRating = ref<HockeyEloRatingTeam[]>([])
+  const eloRatingLoading = ref(false)
+  const eloRatingError = ref('')
+  const eloCalculatedAt = ref<string | null>(null)
+  const eloSeasonLabel = ref<string | null>(null)
+  const eloHasData = ref(false)
+
+  const eloRecalculateLoading = ref(false)
+
+  const selectedEloSeason = computed(() => {
+    return (
+        eloSeasons.value.find((season) => season.seasonId === selectedEloSeasonId.value) ??
+        null
+    )
+  })
+
+  const canRecalculateSelectedSeason = computed(() => {
+    return Boolean(
+        selectedEloSeason.value &&
+        currentEloSeasonId.value &&
+        selectedEloSeason.value.seasonId === currentEloSeasonId.value,
+    )
+  })
 
   function clearTeamCards() {
     teamCards.value = []
@@ -304,6 +342,157 @@ export const hockey = defineStore('hockey', () => {
     pollingIntervalId.value = null
   }
 
+  function resetEloRatingState() {
+    eloRating.value = []
+    eloRatingError.value = ''
+    eloCalculatedAt.value = null
+    eloSeasonLabel.value = null
+    eloHasData.value = false
+  }
+
+  function setSelectedEloSeason(seasonId: string | null | undefined) {
+    const normalizedSeasonId = seasonId ? String(seasonId) : null
+
+    if (selectedEloSeasonId.value === normalizedSeasonId) {
+      return
+    }
+
+    selectedEloSeasonId.value = normalizedSeasonId
+    resetEloRatingState()
+  }
+
+  async function fetchEloSeasons(force = false) {
+    if (eloSeasonsLoading.value) {
+      return
+    }
+
+    if (!force && eloSeasons.value.length > 0) {
+      return
+    }
+
+    eloSeasonsLoading.value = true
+    eloSeasonsError.value = ''
+
+    try {
+      const response = await getEloSeasons()
+
+      eloSeasons.value = Array.isArray(response?.items) ? response.items : []
+      currentEloSeasonId.value = response?.currentSeasonId ?? null
+
+      if (!selectedEloSeasonId.value) {
+        selectedEloSeasonId.value =
+            response?.currentSeasonId ??
+            eloSeasons.value[0]?.seasonId ??
+            null
+      }
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Не удалось загрузить сезоны Elo'
+
+      eloSeasonsError.value = message
+      eloSeasons.value = []
+      currentEloSeasonId.value = null
+      selectedEloSeasonId.value = null
+
+      toast.error({
+        title: 'Ошибка загрузки сезонов Elo',
+        message,
+      })
+    } finally {
+      eloSeasonsLoading.value = false
+    }
+  }
+
+  async function fetchEloRating(seasonId?: string | null, force = false) {
+    const resolvedSeasonId = seasonId ?? selectedEloSeasonId.value
+
+    if (!resolvedSeasonId) {
+      resetEloRatingState()
+      return
+    }
+
+    if (eloRatingLoading.value) {
+      return
+    }
+
+    if (!force && eloHasData.value && selectedEloSeasonId.value === resolvedSeasonId) {
+      return
+    }
+
+    eloRatingLoading.value = true
+    eloRatingError.value = ''
+
+    try {
+      const response = await getEloRating(resolvedSeasonId)
+
+      selectedEloSeasonId.value = resolvedSeasonId
+      eloRating.value = Array.isArray(response?.items) ? response.items : []
+      eloCalculatedAt.value = response?.calculatedAt ?? null
+      eloSeasonLabel.value = response?.seasonLabel ?? null
+      eloHasData.value = Boolean(response?.hasData)
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Не удалось загрузить рейтинг Elo'
+
+      eloRatingError.value = message
+      resetEloRatingState()
+
+      toast.error({
+        title: 'Ошибка загрузки рейтинга Elo',
+        message,
+      })
+    } finally {
+      eloRatingLoading.value = false
+    }
+  }
+
+  async function recalculateSelectedSeasonElo() {
+    if (!selectedEloSeasonId.value) {
+      return
+    }
+
+    if (!canRecalculateSelectedSeason.value) {
+      toast.error({
+        title: 'Пересчёт недоступен',
+        message: 'Пересчитать Elo можно только для текущего активного сезона',
+      })
+      return
+    }
+
+    if (eloRecalculateLoading.value) {
+      return
+    }
+
+    eloRecalculateLoading.value = true
+
+    try {
+      const response = await recalculateElo(selectedEloSeasonId.value, true)
+
+      if (!response?.ok) {
+        throw new Error(response?.error || 'Не удалось пересчитать рейтинг Elo')
+      }
+
+      toast.success({
+        title: 'Elo рейтинг пересчитан',
+        message: response.fromCache
+            ? 'Загружен актуальный кеш сезона'
+            : 'Рейтинг для текущего сезона успешно обновлён',
+      })
+
+      await fetchEloRating(selectedEloSeasonId.value, true)
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Не удалось пересчитать рейтинг Elo'
+
+      toast.error({
+        title: 'Ошибка пересчёта Elo',
+        message,
+      })
+    } finally {
+      eloRecalculateLoading.value = false
+    }
+  }
+
   return {
     matches,
     isLoading,
@@ -340,5 +529,25 @@ export const hockey = defineStore('hockey', () => {
     teamCardsError,
     fetchTeamCards,
     clearTeamCards,
+
+    eloSeasons,
+    eloSeasonsLoading,
+    eloSeasonsError,
+    selectedEloSeasonId,
+    currentEloSeasonId,
+    selectedEloSeason,
+    eloRating,
+    eloRatingLoading,
+    eloRatingError,
+    eloCalculatedAt,
+    eloSeasonLabel,
+    eloHasData,
+    eloRecalculateLoading,
+    canRecalculateSelectedSeason,
+    fetchEloSeasons,
+    fetchEloRating,
+    recalculateSelectedSeasonElo,
+    setSelectedEloSeason,
+    resetEloRatingState,
   }
 })

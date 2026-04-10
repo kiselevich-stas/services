@@ -219,3 +219,50 @@ export interface HockeyTeamCard {
     conference_key: string | null
   }
 }
+
+
+//ELO
+export type HockeyEloSeason = {
+  seasonId: string
+  seasonLabel: string
+  isActive: boolean
+}
+
+export type HockeyEloRatingTeam = {
+  teamId: string
+  teamName: string
+  seasonId: string
+  rating: number
+  matchesPlayed: number
+  wins: number
+  losses: number
+  updatedAt: string | null
+  logoUrl: string | null
+  form?: Array<'win' | 'loss'>
+}
+
+export type GetHockeyEloSeasonsResponse = {
+  ok: boolean
+  currentSeasonId: string | null
+  items: HockeyEloSeason[]
+}
+
+export type GetHockeyEloRatingResponse = {
+  ok: boolean
+  seasonId: string
+  seasonLabel: string | null
+  items: HockeyEloRatingTeam[]
+  calculatedAt: string | null
+  hasData: boolean
+}
+
+export type RecalculateEloResponse = {
+  ok: boolean
+  seasonId: string
+  seasonName?: string
+  matchesProcessed?: number
+  teamsUpdated?: number
+  snapshotsInserted?: number
+  fromCache?: boolean
+  error?: string
+}
