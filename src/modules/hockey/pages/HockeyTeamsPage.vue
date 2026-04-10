@@ -1,5 +1,6 @@
 <template>
   <section class="hockey-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <header class="hockey-page__hero">
       <div>
         <p class="hockey-page__eyebrow">KHL Teams</p>
@@ -10,44 +11,14 @@
       </div>
     </header>
 
-    <section class="hockey-stage-filter">
-      <div class="hockey-stage-filter__top">
-        <div>
-          <p class="hockey-page__eyebrow">KHL Stage</p>
-          <h2 class="hockey-stage-filter__title">Выбор сезона</h2>
-          <p class="hockey-stage-filter__subtitle">
-            Выбери сезон и стадию, чтобы обновить список команд
-          </p>
-        </div>
-      </div>
-
-      <div
-          v-if="hockeyStore.stageOptionsLoading"
-          class="hockey-stage-filter__skeleton"
-      >
-        <div class="skeleton skeleton__label" />
-        <div class="skeleton skeleton__select" />
-      </div>
-
-      <div
-          v-else-if="hockeyStore.stageOptionsError"
-          class="hockey-page__empty hockey-stage-filter__empty"
-      >
-        {{ hockeyStore.stageOptionsError }}
-      </div>
-
-      <div v-else class="hockey-stage-filter__controls">
-        <UiSelect
-            :model-value="hockeyStore.selectedStageId ?? ''"
-            :options="stageSelectOptions"
-            label="Сезон / стадия"
-            placeholder="Выберите сезон"
-            id="hockey-stage-select"
-            :disabled="!stageSelectOptions.length"
-            @update:model-value="handleStageChange"
-        />
-      </div>
-    </section>
+    <HockeyFilterToolbar
+        :options="stageSelectOptions"
+        :model-value="hockeyStore.selectedStageId ?? ''"
+        :is-loading="hockeyStore.stageOptionsLoading"
+        label="Сезон / стадия"
+        placeholder="Выберите сезон"
+        @update:modelValue="handleStageChange"
+    />
 
     <section class="teams-section">
       <div class="teams-section__top">
@@ -93,8 +64,16 @@ import { computed, onMounted, watch } from 'vue'
 import UiSelect from '../../../components/ui/UiSelect.vue'
 import HockeyTeamsSlider from '../components/teams/HockeyTeamsSlider.vue'
 import { hockey } from '../store/hockey.ts'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
+import HockeyFilterToolbar from "../components/toolbar/HockeyFilterToolbar.vue";
 
 const hockeyStore = hockey()
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Хоккейный центр', to: '/hockey' },
+  { label: 'Команды', to: '' },
+])
 
 const stageSelectOptions = computed(() => {
   return (hockeyStore.stageOptions ?? []).map((stage) => ({

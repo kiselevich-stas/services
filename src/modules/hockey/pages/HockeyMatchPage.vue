@@ -1,5 +1,6 @@
 <template>
   <section class="match-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <MatchPageSkeleton v-if="matchDetailsLoading" />
 
     <div v-else-if="matchDetailsError" class="match-page__state match-page__state--error">
@@ -117,6 +118,7 @@ import MatchPageSkeleton from '../components/match/MatchPageSkeleton.vue'
 import MatchHeadToHeadCharts from '../components/match/MatchHeadToHeadCharts.vue'
 
 import { useMatchDetailsView } from '../composables/useMatchDetailsView'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const route = useRoute()
 const hockeyStore = hockey()
@@ -161,6 +163,18 @@ watch(
 onUnmounted(() => {
   hockeyStore.clearMatchDetails()
 })
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Хоккейный центр', to: '/hockey' },
+  {
+    label:
+        matchDetails.value
+            ? `${matchDetails.value.teamA?.name || 'Команда 1'} — ${matchDetails.value.teamB?.name || 'Команда 2'}`
+            : 'Матч',
+    to: '',
+  },
+])
 </script>
 
 <style scoped lang="scss">
@@ -168,6 +182,9 @@ onUnmounted(() => {
   min-height: 100%;
   padding: 24px;
   color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .match-page__state {

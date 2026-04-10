@@ -398,3 +398,51 @@ input {
 	scrollbar-width: thin;
 	scrollbar-color: rgba(120, 120, 140, 0.5) transparent;
 }
+
+
+
+
+.hockey-elo-skeleton__hero,
+.hockey-elo-skeleton__toolbar,
+.hockey-elo-skeleton__row {
+	animation: skeleton-fade 0.5s ease both;
+}
+
+.hockey-elo-skeleton__toolbar {
+	animation-delay: 0.08s;
+}
+
+.hockey-elo-skeleton__row:nth-child(1) { animation-delay: 0.12s; }
+.hockey-elo-skeleton__row:nth-child(2) { animation-delay: 0.16s; }
+.hockey-elo-skeleton__row:nth-child(3) { animation-delay: 0.2s; }
+.hockey-elo-skeleton__row:nth-child(4) { animation-delay: 0.24s; }
+.hockey-elo-skeleton__row:nth-child(5) { animation-delay: 0.28s; }
+.hockey-elo-skeleton__row:nth-child(6) { animation-delay: 0.32s; }
+
+@keyframes skeleton-fade {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.hockey-elo-skeleton__item::after,
+.hockey-elo-skeleton__row::after,
+.hockey-elo-skeleton__select::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	transform: translateX(-100%);
+	background: linear-gradient(
+									90deg,
+									transparent,
+									rgba(255, 255, 255, 0.14),
+									transparent
+	);
+	animation: hockey-elo-skeleton-shimmer 1.5s infinite;
+}
