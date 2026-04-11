@@ -110,6 +110,7 @@ const isStageUpdating = computed(() => isFetching.value && !!data.value)
 
 const eloChartPoints = computed(() => eloSnapshotsData.value?.chart ?? [])
 const eloSummary = computed(() => eloSnapshotsData.value?.summary ?? null)
+const eloSplits = computed(() => eloSnapshotsData.value?.splits ?? null)
 
 const teamThemeStyle = computed(() => {
   const teamName = data.value?.team?.name
@@ -246,6 +247,7 @@ const breadcrumbs = computed(() => [
           :points="eloChartPoints"
           :summary="eloSummary"
           :team-name="data?.team?.name"
+          :splits="eloSplits"
           :is-loading="isEloSnapshotsLoading || isEloSnapshotsFetching"
       />
 

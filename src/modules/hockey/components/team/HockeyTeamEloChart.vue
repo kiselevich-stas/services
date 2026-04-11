@@ -3,8 +3,13 @@ import { computed } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { LineChart, BarChart, PieChart } from 'echarts/charts'
+import {
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+} from 'echarts/components'
 
 import type {
   HockeyTeamEloChartPoint,
@@ -14,26 +19,45 @@ import type {
 use([
   CanvasRenderer,
   LineChart,
+  BarChart,
+  PieChart,
   GridComponent,
   TooltipComponent,
+  LegendComponent,
+  TitleComponent,
 ])
+
+type EloSplits = {
+  home: {
+    matches: number
+    wins: number
+    losses: number
+  }
+  away: {
+    matches: number
+    wins: number
+    losses: number
+  }
+}
 
 type Props = {
   points: HockeyTeamEloChartPoint[]
   summary?: HockeyTeamEloSummary | null
+  splits?: EloSplits | null
   teamName?: string
   isLoading?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   summary: null,
+  splits: null,
   teamName: '',
   isLoading: false,
 })
 
 const hasData = computed(() => props.points.length > 0)
 
-const chartOption = computed(() => ({
+const lineChartOption = computed(() => ({
   tooltip: {
     trigger: 'axis',
     backgroundColor: 'rgba(15, 23, 42, 0.96)',
@@ -123,6 +147,215 @@ const chartOption = computed(() => ({
     },
   ],
 }))
+
+const deltaChartOption = computed(() => ({
+  tooltip: {
+    trigger: 'axis',
+  },
+  grid: {
+    left: 18,
+    right: 18,
+    top: 24,
+    bottom: 24,
+    containLabel: true,
+  },
+  xAxis: {
+    type: 'category',
+    data: props.points.map((point) => point.dateLabel),
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+    axisLine: {
+      lineStyle: {
+        color: 'rgba(255,255,255,0.18)',
+      },
+    },
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+    splitLine: {
+      lineStyle: {
+        color: 'rgba(255,255,255,0.08)',
+      },
+    },
+  },
+  series: [
+    {
+      name: 'Изменение Elo',
+      type: 'bar',
+      data: props.points.map((point) => ({
+        value: point.delta,
+        itemStyle: {
+          color: point.delta >= 0 ? '#3fb950' : '#ff6b6b',
+        },
+      })),
+      barMaxWidth: 24,
+    },
+  ],
+}))
+
+const resultChartOption = computed(() => ({
+  tooltip: {
+    trigger: 'item',
+  },
+  legend: {
+    bottom: 0,
+    textStyle: {
+      color: 'rgba(255,255,255,0.72)',
+    },
+  },
+  series: [
+    {
+      name: 'Результаты',
+      type: 'pie',
+      radius: ['55%', '75%'],
+      avoidLabelOverlap: true,
+      label: {
+        color: '#fff',
+        formatter: '{b}: {c}',
+      },
+      data: [
+        {
+          value: props.summary?.wins ?? 0,
+          name: 'Победы',
+          itemStyle: {
+            color: '#3fb950',
+          },
+        },
+        {
+          value: props.summary?.losses ?? 0,
+          name: 'Поражения',
+          itemStyle: {
+            color: '#ff6b6b',
+          },
+        },
+      ],
+    },
+  ],
+}))
+
+const homeAwayChartOption = computed(() => ({
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: {
+      type: 'shadow',
+    },
+  },
+  legend: {
+    top: 0,
+    textStyle: {
+      color: 'rgba(255,255,255,0.72)',
+    },
+  },
+  grid: {
+    left: 18,
+    right: 18,
+    top: 40,
+    bottom: 24,
+    containLabel: true,
+  },
+  xAxis: {
+    type: 'category',
+    data: ['Дом', 'Выезд'],
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+    splitLine: {
+      lineStyle: {
+        color: 'rgba(255,255,255,0.08)',
+      },
+    },
+  },
+  series: [
+    {
+      name: 'Победы',
+      type: 'bar',
+      data: [
+        props.splits?.home.wins ?? 0,
+        props.splits?.away.wins ?? 0,
+      ],
+      itemStyle: {
+        color: '#3fb950',
+      },
+      barMaxWidth: 26,
+    },
+    {
+      name: 'Поражения',
+      type: 'bar',
+      data: [
+        props.splits?.home.losses ?? 0,
+        props.splits?.away.losses ?? 0,
+      ],
+      itemStyle: {
+        color: '#ff6b6b',
+      },
+      barMaxWidth: 26,
+    },
+  ],
+}))
+
+const goalsChartOption = computed(() => ({
+  tooltip: {
+    trigger: 'axis',
+    axisPointer: {
+      type: 'shadow',
+    },
+  },
+  grid: {
+    left: 18,
+    right: 18,
+    top: 24,
+    bottom: 24,
+    containLabel: true,
+  },
+  xAxis: {
+    type: 'category',
+    data: ['Заброшено', 'Пропущено'],
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: {
+      color: 'rgba(255,255,255,0.64)',
+    },
+    splitLine: {
+      lineStyle: {
+        color: 'rgba(255,255,255,0.08)',
+      },
+    },
+  },
+  series: [
+    {
+      type: 'bar',
+      data: [
+        {
+          value: props.summary?.goalsFor ?? 0,
+          itemStyle: {
+            color: '#4da3ff',
+          },
+        },
+        {
+          value: props.summary?.goalsAgainst ?? 0,
+          itemStyle: {
+            color: '#ffb347',
+          },
+        },
+      ],
+      barMaxWidth: 36,
+    },
+  ],
+}))
 </script>
 
 <template>
@@ -130,7 +363,7 @@ const chartOption = computed(() => ({
     <div class="hockey-team-elo-chart__header">
       <div>
         <h2 class="hockey-team-elo-chart__title">
-          График Elo
+          Аналитика Elo
         </h2>
 
         <p class="hockey-team-elo-chart__subtitle">
@@ -160,8 +393,8 @@ const chartOption = computed(() => ({
         </div>
 
         <div class="hockey-team-elo-chart__summary-item">
-          <span>Побед</span>
-          <strong>{{ summary.wins }}</strong>
+          <span>Винрейт</span>
+          <strong>{{ summary.winRate }}%</strong>
         </div>
       </div>
     </div>
@@ -170,22 +403,63 @@ const chartOption = computed(() => ({
         v-if="isLoading"
         class="hockey-team-elo-chart__state"
     >
-      Загрузка графика...
+      Загрузка графиков...
     </div>
 
     <div
         v-else-if="!hasData"
         class="hockey-team-elo-chart__state"
     >
-      Нет данных для графика Elo
+      Нет данных для графиков Elo
     </div>
 
-    <VChart
-        v-else
-        class="hockey-team-elo-chart__canvas"
-        :option="chartOption"
-        autoresize
-    />
+    <template v-else>
+      <div class="hockey-team-elo-chart__main">
+        <VChart
+            class="hockey-team-elo-chart__canvas hockey-team-elo-chart__canvas--lg"
+            :option="lineChartOption"
+            autoresize
+        />
+      </div>
+
+      <div class="hockey-team-elo-chart__grid">
+        <div class="hockey-team-elo-chart__card">
+          <h3 class="hockey-team-elo-chart__card-title">Изменение Elo по матчам</h3>
+          <VChart
+              class="hockey-team-elo-chart__canvas"
+              :option="deltaChartOption"
+              autoresize
+          />
+        </div>
+
+        <div class="hockey-team-elo-chart__card">
+          <h3 class="hockey-team-elo-chart__card-title">Победы и поражения</h3>
+          <VChart
+              class="hockey-team-elo-chart__canvas"
+              :option="resultChartOption"
+              autoresize
+          />
+        </div>
+
+        <div class="hockey-team-elo-chart__card">
+          <h3 class="hockey-team-elo-chart__card-title">Дом / Выезд</h3>
+          <VChart
+              class="hockey-team-elo-chart__canvas"
+              :option="homeAwayChartOption"
+              autoresize
+          />
+        </div>
+
+        <div class="hockey-team-elo-chart__card">
+          <h3 class="hockey-team-elo-chart__card-title">Заброшенные и пропущенные</h3>
+          <VChart
+              class="hockey-team-elo-chart__canvas"
+              :option="goalsChartOption"
+              autoresize
+          />
+        </div>
+      </div>
+    </template>
   </section>
 </template>
 
@@ -241,8 +515,34 @@ const chartOption = computed(() => ({
   font-size: 16px;
 }
 
+.hockey-team-elo-chart__main {
+  margin-bottom: 20px;
+}
+
+.hockey-team-elo-chart__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.hockey-team-elo-chart__card {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hockey-team-elo-chart__card-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .hockey-team-elo-chart__canvas {
   width: 100%;
+  height: 280px;
+}
+
+.hockey-team-elo-chart__canvas--lg {
   height: 360px;
 }
 
@@ -252,12 +552,22 @@ const chartOption = computed(() => ({
   color: rgba(255, 255, 255, 0.64);
 }
 
+@media (max-width: 1100px) {
+  .hockey-team-elo-chart__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .hockey-team-elo-chart__header {
     flex-direction: column;
   }
 
   .hockey-team-elo-chart__canvas {
+    height: 260px;
+  }
+
+  .hockey-team-elo-chart__canvas--lg {
     height: 300px;
   }
 }
