@@ -10,6 +10,8 @@ import { getTeamCards } from '../api/getTeamCards'
 import { getEloSeasons } from '../api/getEloSeasons'
 import { getEloRating } from '../api/getEloRating'
 import { recalculateElo } from '../api/recalculateElo'
+import { getMatchEloPrediction } from '../api/getMatchEloPrediction'
+import { getExpectedScore } from '../lib/elo'
 
 import type {
   HockeyUpcomingMatch,
@@ -19,9 +21,10 @@ import type {
   HockeyTeamCard,
   HockeyEloSeason,
   HockeyEloRatingTeam,
+  HockeyMatchEloPrediction,
 } from '../types'
 
-import { useToastStore } from '../../../stores/toast.ts'
+import { useToastStore } from '../../../stores/toast'
 
 export const hockey = defineStore('hockey', () => {
   const toast = useToastStore()
@@ -42,6 +45,10 @@ export const hockey = defineStore('hockey', () => {
   const matchDetailsLoading = ref(false)
   const matchDetailsError = ref('')
   const currentMatchId = ref<number | string | null>(null)
+
+  const matchEloPrediction = ref<HockeyMatchEloPrediction | null>(null)
+  const matchEloPredictionLoading = ref(false)
+  const matchEloPredictionError = ref('')
 
   const stageOptions = ref<HockeyStageOption[]>([])
   const stageOptionsLoading = ref(false)
@@ -82,6 +89,83 @@ export const hockey = defineStore('hockey', () => {
         selectedEloSeason.value.seasonId === currentEloSeasonId.value,
     )
   })
+
+  function resetMatchEloPrediction() {
+    matchEloPrediction.value = null
+    matchEloPredictionError.value = ''
+  }
+
+  function toSafeString(value: unknown): string {
+    if (typeof value === 'string') {
+      return value
+    }
+
+    if (typeof value === 'number') {
+      return String(value)
+    }
+
+    return ''
+  }
+
+  function extractMatchSeasonId(details: HockeyMatchDetails | null): string | null {
+    if (!details) {
+      return null
+    }
+
+    const rawDetails = details as Record<string, unknown>
+    const season = rawDetails.season
+    const tournament = rawDetails.tournament as Record<string, unknown> | undefined
+    const championship = rawDetails.championship as Record<string, unknown> | undefined
+    const stage = rawDetails.stage as Record<string, unknown> | undefined
+
+    const seasonIdCandidates = [
+      rawDetails.season_id,
+      rawDetails.seasonId,
+      rawDetails.seasonID,
+
+      season,
+      typeof season === 'object' && season !== null
+          ? (season as Record<string, unknown>).id
+          : null,
+      typeof season === 'object' && season !== null
+          ? (season as Record<string, unknown>).season_id
+          : null,
+      typeof season === 'object' && season !== null
+          ? (season as Record<string, unknown>).seasonId
+          : null,
+
+      tournament?.season_id,
+      tournament?.seasonId,
+      tournament?.id,
+
+      championship?.season_id,
+      championship?.seasonId,
+      championship?.id,
+
+      stage?.season_id,
+      stage?.seasonId,
+    ]
+
+    for (const candidate of seasonIdCandidates) {
+      const value = toSafeString(candidate)
+
+      if (value) {
+        return value
+      }
+    }
+
+    return currentEloSeasonId.value ?? selectedEloSeasonId.value ?? null
+  }
+
+  function extractTeamId(team: unknown): string {
+    if (!team || typeof team !== 'object') {
+      return ''
+    }
+
+    const rawTeam = team as Record<string, unknown>
+
+    return toSafeString(rawTeam.id ?? rawTeam.team_id ?? rawTeam.teamId)
+  }
 
   function clearTeamCards() {
     teamCards.value = []
@@ -173,9 +257,7 @@ export const hockey = defineStore('hockey', () => {
       matches.value = Array.isArray(response) ? response : []
     } catch (error) {
       const message =
-          error instanceof Error
-              ? error.message
-              : 'Не удалось загрузить ближайшие матчи'
+          error instanceof Error ? error.message : 'Не удалось загрузить ближайшие матчи'
 
       errorMessage.value = message
 
@@ -208,9 +290,7 @@ export const hockey = defineStore('hockey', () => {
       isLiveInitialized.value = true
     } catch (error) {
       const message =
-          error instanceof Error
-              ? error.message
-              : 'Не удалось загрузить текущие матчи'
+          error instanceof Error ? error.message : 'Не удалось загрузить текущие матчи'
 
       liveError.value = message
 
@@ -239,9 +319,7 @@ export const hockey = defineStore('hockey', () => {
       isLiveInitialized.value = true
     } catch (error) {
       const message =
-          error instanceof Error
-              ? error.message
-              : 'Не удалось обновить текущие матчи'
+          error instanceof Error ? error.message : 'Не удалось обновить текущие матчи'
 
       liveError.value = message
 
@@ -251,6 +329,79 @@ export const hockey = defineStore('hockey', () => {
       })
     } finally {
       loadingLive.value = false
+    }
+  }
+
+  async function fetchMatchEloPrediction(details?: HockeyMatchDetails | null) {
+    const resolvedDetails = details ?? matchDetails.value
+
+    if (!resolvedDetails) {
+      resetMatchEloPrediction()
+      return
+    }
+
+    const seasonId = extractMatchSeasonId(resolvedDetails)
+    const homeTeamId = extractTeamId(resolvedDetails.teamA)
+    const awayTeamId = extractTeamId(resolvedDetails.teamB)
+
+    if (!seasonId || !homeTeamId || !awayTeamId) {
+      resetMatchEloPrediction()
+      matchEloPredictionError.value = 'Недостаточно данных для загрузки Elo-прогноза'
+      return
+    }
+
+    if (matchEloPredictionLoading.value) {
+      return
+    }
+
+    matchEloPredictionLoading.value = true
+    matchEloPredictionError.value = ''
+
+    try {
+      const rows = await getMatchEloPrediction({
+        seasonId,
+        teamIds: [homeTeamId, awayTeamId],
+      })
+
+      const homeRow = rows.find((item) => String(item.team_id) === homeTeamId)
+      const awayRow = rows.find((item) => String(item.team_id) === awayTeamId)
+
+      if (!homeRow || !awayRow) {
+        matchEloPrediction.value = null
+        matchEloPredictionError.value = 'Рейтинг одной из команд не найден'
+        return
+      }
+
+      const homeRating = Number(homeRow.rating)
+      const awayRating = Number(awayRow.rating)
+
+      const expectedHome = getExpectedScore(homeRating, awayRating)
+      const expectedAway = 1 - expectedHome
+
+      matchEloPrediction.value = {
+        homeTeamId,
+        awayTeamId,
+        homeTeamName: resolvedDetails.teamA?.name ?? homeRow.team_name,
+        awayTeamName: resolvedDetails.teamB?.name ?? awayRow.team_name,
+        seasonId,
+        homeRating,
+        awayRating,
+        expectedHome,
+        expectedAway,
+      }
+    } catch (error) {
+      const message =
+          error instanceof Error ? error.message : 'Не удалось загрузить Elo-прогноз матча'
+
+      matchEloPrediction.value = null
+      matchEloPredictionError.value = message
+
+      toast.error({
+        title: 'Ошибка загрузки Elo-прогноза',
+        message,
+      })
+    } finally {
+      matchEloPredictionLoading.value = false
     }
   }
 
@@ -265,17 +416,20 @@ export const hockey = defineStore('hockey', () => {
 
     matchDetailsLoading.value = true
     matchDetailsError.value = ''
+    resetMatchEloPrediction()
 
     try {
       const response = await getMatchDetails(matchId, 'ru')
 
       matchDetails.value = response ?? null
       currentMatchId.value = matchId
+
+      if (matchDetails.value) {
+        await fetchMatchEloPrediction(matchDetails.value)
+      }
     } catch (error) {
       const message =
-          error instanceof Error
-              ? error.message
-              : 'Не удалось загрузить страницу матча'
+          error instanceof Error ? error.message : 'Не удалось загрузить страницу матча'
 
       matchDetailsError.value = message
 
@@ -299,11 +453,15 @@ export const hockey = defineStore('hockey', () => {
     try {
       const response = await getMatchDetails(currentMatchId.value, 'ru')
       matchDetails.value = response ?? null
+
+      if (matchDetails.value) {
+        await fetchMatchEloPrediction(matchDetails.value)
+      } else {
+        resetMatchEloPrediction()
+      }
     } catch (error) {
       const message =
-          error instanceof Error
-              ? error.message
-              : 'Не удалось обновить страницу матча'
+          error instanceof Error ? error.message : 'Не удалось обновить страницу матча'
 
       matchDetailsError.value = message
 
@@ -320,6 +478,7 @@ export const hockey = defineStore('hockey', () => {
     matchDetails.value = null
     matchDetailsError.value = ''
     currentMatchId.value = null
+    resetMatchEloPrediction()
   }
 
   function startLivePolling(intervalMs = 15_000) {
@@ -381,9 +540,7 @@ export const hockey = defineStore('hockey', () => {
 
       if (!selectedEloSeasonId.value) {
         selectedEloSeasonId.value =
-            response?.currentSeasonId ??
-            eloSeasons.value[0]?.seasonId ??
-            null
+            response?.currentSeasonId ?? eloSeasons.value[0]?.seasonId ?? null
       }
     } catch (error) {
       const message =
@@ -513,9 +670,14 @@ export const hockey = defineStore('hockey', () => {
     matchDetailsLoading,
     matchDetailsError,
     currentMatchId,
+    matchEloPrediction,
+    matchEloPredictionLoading,
+    matchEloPredictionError,
     fetchMatchDetails,
     refreshMatchDetails,
     clearMatchDetails,
+    fetchMatchEloPrediction,
+    resetMatchEloPrediction,
 
     stageOptions,
     stageOptionsLoading,

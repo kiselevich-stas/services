@@ -266,3 +266,15 @@ export type RecalculateEloResponse = {
   fromCache?: boolean
   error?: string
 }
+
+export type HockeyMatchEloPrediction = {
+  homeTeamId: string
+  awayTeamId: string
+  homeTeamName: string
+  awayTeamName: string
+  seasonId: string
+  homeRating: number
+  awayRating: number
+  expectedHome: number
+  expectedAway: number
+}

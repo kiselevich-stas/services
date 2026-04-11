@@ -22,8 +22,30 @@
         />
 
         <div class="match-grid">
-          <MatchPeriodsCard   class="match-card--full" :items="periodItems" />
+          <MatchEloPredictionCard
+              v-if="matchEloPrediction"
+              class="match-card--full"
+              :home-team-name="matchEloPrediction.homeTeamName"
+              :away-team-name="matchEloPrediction.awayTeamName"
+              :home-rating="matchEloPrediction.homeRating"
+              :away-rating="matchEloPrediction.awayRating"
+          />
 
+          <div
+              v-else-if="matchEloPredictionLoading"
+              class="match-page__state match-card--full"
+          >
+            Загрузка Elo-прогноза...
+          </div>
+
+          <div
+              v-else-if="matchEloPredictionError"
+              class="match-page__state match-page__state--error match-card--full"
+          >
+            {{ matchEloPredictionError }}
+          </div>
+
+          <MatchPeriodsCard class="match-card--full" :items="periodItems" />
 
           <MatchHeadToHeadCharts
               class="match-card--full"
@@ -81,11 +103,18 @@
               :team-b="matchDetails.teamB"
           />
 
-          <MatchHeadToHeadCard :head-to-head="matchDetails.headToHead" :team-a="matchDetails.teamA" :team-b="matchDetails.teamB" />
-
+          <MatchHeadToHeadCard
+              :head-to-head="matchDetails.headToHead"
+              :team-a="matchDetails.teamA"
+              :team-b="matchDetails.teamB"
+          />
 
           <MatchSummaryCard :match-details="matchDetails" />
-          <MatchInfoCard   class="match-card--full" :match-details="matchDetails" />
+
+          <MatchInfoCard
+              class="match-card--full"
+              :match-details="matchDetails"
+          />
 
           <MatchTextFeedCard
               class="match-card--full"
@@ -116,9 +145,10 @@ import MatchSummaryCard from '../components/match/MatchSummaryCard.vue'
 import MatchTextFeedCard from '../components/match/MatchTextFeedCard.vue'
 import MatchPageSkeleton from '../components/match/MatchPageSkeleton.vue'
 import MatchHeadToHeadCharts from '../components/match/MatchHeadToHeadCharts.vue'
+import MatchEloPredictionCard from '../components/match/MatchEloPredictionCard.vue'
+import UiBreadcrumbs from '../../../components/ui/breadcrumbs/UiBreadcrumbs.vue'
 
 import { useMatchDetailsView } from '../composables/useMatchDetailsView'
-import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const route = useRoute()
 const hockeyStore = hockey()
@@ -127,6 +157,9 @@ const {
   matchDetails,
   matchDetailsLoading,
   matchDetailsError,
+  matchEloPrediction,
+  matchEloPredictionLoading,
+  matchEloPredictionError,
 } = storeToRefs(hockeyStore)
 
 const matchId = computed(() => String(route.params.id || ''))
@@ -168,10 +201,9 @@ const breadcrumbs = computed(() => [
   { label: 'Главная', to: '/' },
   { label: 'Хоккейный центр', to: '/hockey' },
   {
-    label:
-        matchDetails.value
-            ? `${matchDetails.value.teamA?.name || 'Команда 1'} — ${matchDetails.value.teamB?.name || 'Команда 2'}`
-            : 'Матч',
+    label: matchDetails.value
+        ? `${matchDetails.value.teamA?.name || 'Команда 1'} — ${matchDetails.value.teamB?.name || 'Команда 2'}`
+        : 'Матч',
     to: '',
   },
 ])
