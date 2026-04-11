@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (event: 'change-stage', value: string): void
 }>()
 
-const skeletonItems = Array.from({ length: 7 }, (_, index) => index)
+const skeletonItems = Array.from({ length: 6 }, (_, index) => index)
 </script>
 
 <template>
@@ -61,7 +61,7 @@ const skeletonItems = Array.from({ length: 7 }, (_, index) => index)
         class="stats-grid"
     >
       <article
-          v-for="item in skeletonItems"
+          v-for="item in skeletonItems.slice(0,6)"
           :key="item"
           class="stat-card stat-card--skeleton"
       >

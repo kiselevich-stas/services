@@ -1,22 +1,18 @@
-import { computed, unref, type MaybeRef } from 'vue'
+import {computed, toValue} from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { getHockeyTeamPage } from '../api/getHockeyTeamPage'
-
+import { getHockeyTeamPage} from "../api/getHockeyTeamPage.ts";
+import type { MaybeRefOrGetter } from 'vue'
 export function useHockeyTeamPage(
-    teamId: MaybeRef<string>,
-    stageId?: MaybeRef<string | undefined>,
+    teamId: MaybeRefOrGetter<string>,
+    stageId: MaybeRefOrGetter<string | undefined>,
 ) {
-    const resolvedTeamId = computed(() => unref(teamId))
-    const resolvedStageId = computed(() => unref(stageId))
-
     return useQuery({
-        queryKey: computed(() => [
-            'hockey-team-page',
-            resolvedTeamId.value,
-            resolvedStageId.value,
-        ]),
-        queryFn: () => getHockeyTeamPage(resolvedTeamId.value, resolvedStageId.value),
-        enabled: computed(() => Boolean(resolvedTeamId.value)),
-        retry: false,
+        queryKey: ['hockey-team-page', toValue(teamId), toValue(stageId)],
+        queryFn: () =>
+            getHockeyTeamPage({
+                teamId: toValue(teamId),
+                stageId: toValue(stageId),
+            }),
+        enabled: computed(() => Boolean(toValue(teamId) && toValue(stageId))),
     })
 }

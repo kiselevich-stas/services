@@ -30,6 +30,7 @@ defineProps<{
   nextMatch?: MatchItem | null
   arena?: Arena | null
   headCoach?: HeadCoach | null
+  isLoading?: boolean
 }>()
 
 const formatMatchDate = (timestamp?: number | null) => {
@@ -46,120 +47,135 @@ const formatMatchDate = (timestamp?: number | null) => {
 
 <template>
   <div class="overview-grid">
-    <section class="panel panel--accent">
-      <p class="panel__label">Ближайший матч</p>
+    <template v-if="isLoading">
+      <section
+          v-for="item in 3"
+          :key="item"
+          class="panel panel--skeleton"
+      >
+        <div class="skeleton panel__label-skeleton" />
+        <div class="skeleton panel__title-skeleton" />
+        <div class="skeleton panel__text-skeleton" />
+        <div class="skeleton panel__link-skeleton" />
+      </section>
+    </template>
 
-      <template v-if="nextMatch">
-        <h2 class="panel__title">
-          {{ nextMatch.teamA?.name }} — {{ nextMatch.teamB?.name }}
-        </h2>
+    <template v-else>
+      <section class="panel panel--accent">
+        <p class="panel__label">Ближайший матч</p>
 
-        <p class="panel__text">
-          {{ formatMatchDate(nextMatch.startAt) }}
-        </p>
+        <template v-if="nextMatch">
+          <h2 class="panel__title">
+            {{ nextMatch.teamA?.name }} — {{ nextMatch.teamB?.name }}
+          </h2>
+
+          <p class="panel__text">
+            {{ formatMatchDate(nextMatch.startAt) }}
+          </p>
+
+          <p
+              v-if="nextMatch.stageName"
+              class="panel__muted"
+          >
+            {{ nextMatch.stageName }}
+          </p>
+
+          <RouterLink
+              :to="`/hockey/${nextMatch.id}`"
+              class="panel__link"
+          >
+            Открыть матч
+          </RouterLink>
+        </template>
 
         <p
-            v-if="nextMatch.stageName"
-            class="panel__muted"
+            v-else
+            class="panel__text"
         >
-          {{ nextMatch.stageName }}
+          Нет данных о ближайшем матче
         </p>
+      </section>
 
-        <RouterLink
-            :to="`/hockey/${nextMatch.id}`"
-            class="panel__link"
-        >
-          Открыть матч
-        </RouterLink>
-      </template>
+      <section class="panel">
+        <p class="panel__label">Арена</p>
 
-      <p
-          v-else
-          class="panel__text"
-      >
-        Нет ближайших матчей
-      </p>
-    </section>
+        <template v-if="arena">
+          <h2 class="panel__title">{{ arena.name }}</h2>
+          <p class="panel__text">{{ arena.city }}</p>
 
-    <section class="panel">
-      <p class="panel__label">Арена</p>
+          <p
+              v-if="arena.address"
+              class="panel__muted"
+          >
+            {{ arena.address }}
+          </p>
 
-      <template v-if="arena">
-        <h2 class="panel__title">{{ arena.name }}</h2>
-        <p class="panel__text">{{ arena.city }}</p>
+          <p
+              v-if="arena.capacity"
+              class="panel__muted"
+          >
+            Вместимость: {{ arena.capacity }}
+          </p>
+
+          <a
+              v-if="arena.website"
+              :href="arena.website"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="panel__link"
+          >
+            Сайт арены
+          </a>
+        </template>
+
         <p
-            v-if="arena.address"
-            class="panel__muted"
+            v-else
+            class="panel__text"
         >
-          {{ arena.address }}
+          Нет данных об арене
         </p>
+      </section>
+
+      <section class="panel">
+        <p class="panel__label">Главный тренер</p>
+
+        <template v-if="headCoach">
+          <div class="coach-card">
+            <img
+                v-if="headCoach.photo"
+                :src="headCoach.photo"
+                :alt="headCoach.name"
+                class="coach-card__photo"
+            >
+
+            <div>
+              <h2 class="panel__title">{{ headCoach.name }}</h2>
+            </div>
+          </div>
+        </template>
+
         <p
-            v-if="arena.capacity"
-            class="panel__muted"
+            v-else
+            class="panel__text"
         >
-          Вместимость: {{ arena.capacity }}
+          Нет данных о тренере
         </p>
-
-        <a
-            v-if="arena.website"
-            :href="arena.website"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="panel__link"
-        >
-          Сайт арены
-        </a>
-      </template>
-
-      <p
-          v-else
-          class="panel__text"
-      >
-        Нет информации об арене
-      </p>
-    </section>
-
-    <section class="panel">
-      <p class="panel__label">Главный тренер</p>
-
-      <div
-          v-if="headCoach?.name"
-          class="coach-card"
-      >
-        <img
-            v-if="headCoach.photo"
-            :src="headCoach.photo"
-            :alt="headCoach.name"
-            class="coach-card__photo"
-        >
-
-        <div>
-          <h2 class="panel__title">{{ headCoach.name }}</h2>
-          <p class="panel__muted">Главный тренер</p>
-        </div>
-      </div>
-
-      <p
-          v-else
-          class="panel__text"
-      >
-        Нет данных о тренере
-      </p>
-    </section>
+      </section>
+    </template>
   </div>
 </template>
 
 <style scoped lang="scss">
 .overview-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .panel {
   display: grid;
-  align-content: start;
-  gap: 14px;
+  gap: 10px;
+  min-height: 220px;
   padding: 22px;
   border-radius: 24px;
   background: rgba(13, 18, 35, 0.82);
@@ -167,14 +183,12 @@ const formatMatchDate = (timestamp?: number | null) => {
 }
 
 .panel--accent {
-  border-color: var(--team-color-32);
-  background:
-      linear-gradient(
-              180deg,
-              var(--team-color-12) 0%,
-              rgba(13, 18, 35, 0.82) 65%,
-              rgba(13, 18, 35, 0.82) 100%
-      );
+  border-color: var(--team-color-24);
+  background: linear-gradient(
+          180deg,
+          var(--team-color-08) 0%,
+          rgba(13, 18, 35, 0.82) 100%
+  );
 }
 
 .panel__label {
@@ -197,15 +211,12 @@ const formatMatchDate = (timestamp?: number | null) => {
 }
 
 .panel__muted {
-  margin: -4px 0 0;
+  margin: 0;
   color: rgba(255, 255, 255, 0.58);
   font-size: 14px;
 }
 
 .panel__link {
-  margin-top: auto;
-  display: inline-flex;
-  width: fit-content;
   color: var(--team-color);
   text-decoration: none;
   font-weight: 600;
@@ -222,6 +233,54 @@ const formatMatchDate = (timestamp?: number | null) => {
   height: 78px;
   object-fit: cover;
   border-radius: 20px;
+}
+
+.panel--skeleton {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.panel__label-skeleton {
+  width: 110px;
+  height: 14px;
+}
+
+.panel__title-skeleton {
+  width: 75%;
+  height: 28px;
+}
+
+.panel__text-skeleton {
+  width: 55%;
+  height: 16px;
+}
+
+.panel__link-skeleton {
+  width: 100px;
+  height: 16px;
+  margin-top: auto;
+}
+
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.06) 25%,
+          rgba(255, 255, 255, 0.14) 50%,
+          rgba(255, 255, 255, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.4s infinite linear;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 @media (max-width: 1180px) {

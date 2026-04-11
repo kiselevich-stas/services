@@ -1,18 +1,28 @@
 <template>
   <section class="match-page">
     <UiBreadcrumbs :items="breadcrumbs" />
+
     <MatchPageSkeleton v-if="matchDetailsLoading" />
 
-    <div v-else-if="matchDetailsError" class="match-page__state match-page__state--error">
+    <div
+        v-else-if="matchDetailsError"
+        class="match-page__state match-page__state--error"
+    >
       {{ matchDetailsError }}
     </div>
 
-    <div v-else-if="!matchDetails" class="match-page__state">
+    <div
+        v-else-if="!matchDetails"
+        class="match-page__state"
+    >
       Матч не найден
     </div>
 
     <Transition name="page-fade" appear>
-      <div v-if="matchDetails" class="match-page__content">
+      <div
+          v-if="matchDetails"
+          class="match-page__content"
+      >
         <MatchHero
             :match-details="matchDetails"
             :formatted-score="formattedScore"
@@ -22,30 +32,50 @@
         />
 
         <div class="match-grid">
-          <MatchEloPredictionCard
-              v-if="matchEloPrediction"
+          <template v-if="shouldShowEloBlock">
+            <MatchEloPredictionCard
+                v-if="matchEloPrediction"
+                class="match-card--full"
+                :home-team-name="matchEloPrediction.homeTeamName"
+                :away-team-name="matchEloPrediction.awayTeamName"
+                :home-rating="matchEloPrediction.homeRating"
+                :away-rating="matchEloPrediction.awayRating"
+            />
+
+            <div
+                v-else-if="matchEloPredictionLoading"
+                class="match-elo-skeleton match-card--full"
+            >
+              <div class="match-elo-skeleton__head">
+                <div class="skeleton match-elo-skeleton__eyebrow" />
+                <div class="skeleton match-elo-skeleton__title" />
+              </div>
+
+              <div class="match-elo-skeleton__teams">
+                <div class="match-elo-skeleton__team">
+                  <div class="skeleton match-elo-skeleton__team-name" />
+                  <div class="skeleton match-elo-skeleton__bar" />
+                </div>
+
+                <div class="match-elo-skeleton__team">
+                  <div class="skeleton match-elo-skeleton__team-name" />
+                  <div class="skeleton match-elo-skeleton__bar" />
+                </div>
+              </div>
+            </div>
+
+            <div
+                v-else-if="matchEloPredictionError"
+                class="match-page__state match-page__state--error match-card--full"
+            >
+              {{ matchEloPredictionError }}
+            </div>
+          </template>
+
+          <MatchPeriodsCard
               class="match-card--full"
-              :home-team-name="matchEloPrediction.homeTeamName"
-              :away-team-name="matchEloPrediction.awayTeamName"
-              :home-rating="matchEloPrediction.homeRating"
-              :away-rating="matchEloPrediction.awayRating"
+              :items="periodItems"
           />
-
-          <div
-              v-else-if="matchEloPredictionLoading"
-              class="match-page__state match-card--full"
-          >
-            Загрузка Elo-прогноза...
-          </div>
-
-          <div
-              v-else-if="matchEloPredictionError"
-              class="match-page__state match-page__state--error match-card--full"
-          >
-            {{ matchEloPredictionError }}
-          </div>
-
-          <MatchPeriodsCard class="match-card--full" :items="periodItems" />
 
           <MatchHeadToHeadCharts
               class="match-card--full"
@@ -174,6 +204,11 @@ const {
   getTeamNameById,
 } = useMatchDetailsView(matchDetails)
 
+
+const shouldShowEloBlock = computed(() => {
+  return matchDetails.value?.gameStateKey !== 'finished'
+})
+
 async function loadMatch() {
   if (!matchId.value) {
     return
@@ -252,6 +287,67 @@ const breadcrumbs = computed(() => [
   grid-column: 1 / -1;
 }
 
+.match-elo-skeleton {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(13, 18, 35, 0.92), rgba(18, 25, 48, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.match-elo-skeleton__head {
+  display: grid;
+  gap: 10px;
+}
+
+.match-elo-skeleton__eyebrow {
+  width: 90px;
+  height: 14px;
+  border-radius: 10px;
+}
+
+.match-elo-skeleton__title {
+  width: 220px;
+  max-width: 100%;
+  height: 28px;
+  border-radius: 12px;
+}
+
+.match-elo-skeleton__teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.match-elo-skeleton__team {
+  display: grid;
+  gap: 10px;
+}
+
+.match-elo-skeleton__team-name {
+  width: 120px;
+  height: 16px;
+  border-radius: 10px;
+}
+
+.match-elo-skeleton__bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+}
+
+.skeleton {
+  background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.06) 25%,
+          rgba(255, 255, 255, 0.14) 50%,
+          rgba(255, 255, 255, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.4s infinite linear;
+}
+
 .page-fade-enter-active,
 .page-fade-leave-active {
   transition: opacity 0.25s ease, transform 0.25s ease;
@@ -263,6 +359,16 @@ const breadcrumbs = computed(() => [
   transform: translateY(8px);
 }
 
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 @media (max-width: 980px) {
   .match-grid {
     grid-template-columns: 1fr;
@@ -272,6 +378,10 @@ const breadcrumbs = computed(() => [
 @media (max-width: 640px) {
   .match-page {
     padding: 16px;
+  }
+
+  .match-elo-skeleton__teams {
+    grid-template-columns: 1fr;
   }
 }
 </style>

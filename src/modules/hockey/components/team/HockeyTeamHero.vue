@@ -31,11 +31,12 @@ type Team = {
 }
 
 const props = defineProps<{
-  team: Team
+  team?: Team
+  isLoading?: boolean
 }>()
 
 const socialLinks = computed(() => {
-  const socials = props.team.socialNetworks
+  const socials = props.team?.socialNetworks
   if (!socials) return []
 
   return [
@@ -54,86 +55,113 @@ const socialLinks = computed(() => {
   <header class="team-hero">
     <div class="team-hero__glow" />
 
-    <div class="team-hero__main">
-      <div
-          v-if="team.image"
-          class="team-hero__logo-wrap"
-      >
-        <img
-            :src="team.image"
-            :alt="team.name"
-            class="team-hero__logo"
-        >
-      </div>
-
-      <div class="team-hero__content">
-        <p class="team-hero__caption">Команда КХЛ</p>
-
-        <h1 class="team-hero__title">
-          {{ team.name }}
-        </h1>
-
-        <p class="team-hero__meta">
-          {{ team.location }}
-          <span v-if="team.foundationYear">
-            · c {{ team.foundationYear }}
-          </span>
-        </p>
-
-        <div class="team-hero__tags">
-          <span
-              v-if="team.division"
-              class="team-hero__tag"
-          >
-            {{ team.division }}
-          </span>
-
-          <span
-              v-if="team.conference"
-              class="team-hero__tag"
-          >
-            {{ team.conference }}
-          </span>
-
-          <span
-              v-if="team.stage"
-              class="team-hero__tag"
-          >
-            {{ team.stage }}
-          </span>
+    <template v-if="isLoading">
+      <div class="team-hero__main">
+        <div class="team-hero__logo-wrap team-hero__logo-wrap--skeleton">
+          <div class="skeleton team-hero__logo-skeleton" />
         </div>
 
+        <div class="team-hero__content">
+          <div class="skeleton team-hero__caption-skeleton" />
+          <div class="skeleton team-hero__title-skeleton" />
+          <div class="skeleton team-hero__meta-skeleton" />
+
+          <div class="team-hero__tags">
+            <div class="skeleton team-hero__tag-skeleton" />
+            <div class="skeleton team-hero__tag-skeleton" />
+            <div class="skeleton team-hero__tag-skeleton" />
+          </div>
+        </div>
+      </div>
+
+      <div class="team-hero__actions">
+        <div class="skeleton team-hero__button-skeleton" />
+        <div class="skeleton team-hero__button-skeleton" />
+      </div>
+    </template>
+
+    <template v-else-if="team">
+      <div class="team-hero__main">
         <div
-            v-if="socialLinks.length"
-            class="team-hero__socials"
+            v-if="team.image"
+            class="team-hero__logo-wrap"
         >
-          <a
-              v-for="social in socialLinks"
-              :key="social.key"
-              :href="social.url"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="team-hero__social-link"
+          <img
+              :src="team.image"
+              :alt="team.name"
+              class="team-hero__logo"
           >
-            {{ social.label }}
-          </a>
+        </div>
+
+        <div class="team-hero__content">
+          <p class="team-hero__caption">Команда КХЛ</p>
+
+          <h1 class="team-hero__title">
+            {{ team.name }}
+          </h1>
+
+          <p class="team-hero__meta">
+            {{ team.location }}
+            <span v-if="team.foundationYear">
+              · c {{ team.foundationYear }}
+            </span>
+          </p>
+
+          <div class="team-hero__tags">
+            <span
+                v-if="team.division"
+                class="team-hero__tag"
+            >
+              {{ team.division }}
+            </span>
+
+            <span
+                v-if="team.conference"
+                class="team-hero__tag"
+            >
+              {{ team.conference }}
+            </span>
+
+            <span
+                v-if="team.stage"
+                class="team-hero__tag"
+            >
+              {{ team.stage }}
+            </span>
+          </div>
+
+<!--          <div-->
+<!--              v-if="socialLinks.length"-->
+<!--              class="team-hero__socials"-->
+<!--          >-->
+<!--            <a-->
+<!--                v-for="social in socialLinks"-->
+<!--                :key="social.key"-->
+<!--                :href="social.url"-->
+<!--                target="_blank"-->
+<!--                rel="noopener noreferrer"-->
+<!--                class="team-hero__social-link"-->
+<!--            >-->
+<!--              {{ social.label }}-->
+<!--            </a>-->
+<!--          </div>-->
         </div>
       </div>
-    </div>
 
-    <div class="team-hero__actions">
-      <RouterLink to="/hockey/teams">
-        <UiButton variant="secondary">
-          Все команды
-        </UiButton>
-      </RouterLink>
+      <div class="team-hero__actions">
+        <RouterLink to="/hockey/teams">
+          <UiButton variant="secondary">
+            Все команды
+          </UiButton>
+        </RouterLink>
 
-      <RouterLink to="/hockey">
-        <UiButton>
-          К матчам
-        </UiButton>
-      </RouterLink>
-    </div>
+        <RouterLink to="/hockey">
+          <UiButton>
+            К матчам
+          </UiButton>
+        </RouterLink>
+      </div>
+    </template>
   </header>
 </template>
 
@@ -198,10 +226,20 @@ const socialLinks = computed(() => {
   border: 1px solid var(--team-color-24);
 }
 
+.team-hero__logo-wrap--skeleton {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .team-hero__logo {
   width: 84px;
   height: 84px;
   object-fit: contain;
+}
+
+.team-hero__logo-skeleton {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
 }
 
 .team-hero__caption {
@@ -241,28 +279,71 @@ const socialLinks = computed(() => {
 }
 
 .team-hero__tag {
-  color: rgba(255, 255, 255, 0.84);
   background: var(--team-color-12);
-  border: 1px solid var(--team-color-24);
+  border: 1px solid var(--team-color-20);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .team-hero__social-link {
-  color: rgba(255, 255, 255, 0.88);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .team-hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
+  gap: 10px;
 }
 
-@media (max-width: 900px) {
-  .team-hero {
-    flex-direction: column;
-    align-items: flex-start;
+.team-hero__caption-skeleton {
+  width: 120px;
+  height: 14px;
+  margin-bottom: 10px;
+}
+
+.team-hero__title-skeleton {
+  width: 260px;
+  max-width: 100%;
+  height: 40px;
+  margin-bottom: 12px;
+}
+
+.team-hero__meta-skeleton {
+  width: 180px;
+  height: 18px;
+}
+
+.team-hero__tag-skeleton {
+  width: 110px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.team-hero__button-skeleton {
+  width: 124px;
+  height: 42px;
+  border-radius: 999px;
+}
+
+.skeleton {
+  background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0.06) 25%,
+          rgba(255, 255, 255, 0.14) 50%,
+          rgba(255, 255, 255, 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.4s infinite linear;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
   }
 }
 </style>

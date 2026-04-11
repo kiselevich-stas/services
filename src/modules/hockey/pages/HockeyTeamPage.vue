@@ -1,22 +1,37 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
-import UiPageLoader from '../../../components/ui/UiPageLoader.vue'
+import { storeToRefs } from 'pinia'
+
+import { hockey } from '../store/hockey'
 import { useHockeyTeamPage } from '../composables/useHockeyTeamPage'
+import { useHockeyTeamEloSnapshots } from '../composables/useHockeyTeamEloSnapshots'
 import { getHockeySeasons } from '../api/getHockeySeasons'
 import { getTeamColor, hexToRgba } from '../utils/khlTeamColors'
+
 import HockeyTeamHero from '../components/team/HockeyTeamHero.vue'
 import HockeyTeamOverviewCards from '../components/team/HockeyTeamOverviewCards.vue'
 import HockeyTeamStats from '../components/team/HockeyTeamStats.vue'
 import HockeyTeamMatchesList from '../components/team/HockeyTeamMatchesList.vue'
 import HockeyTeamRoster from '../components/team/HockeyTeamRoster.vue'
+import HockeyTeamEloChart from '../components/team/HockeyTeamEloChart.vue'
+import HockeyFilterToolbar from '../components/toolbar/HockeyFilterToolbar.vue'
+import UiBreadcrumbs from '../../../components/ui/breadcrumbs/UiBreadcrumbs.vue'
 
 const route = useRoute()
 const router = useRouter()
+const hockeyStore = hockey()
+
+const {
+  eloSeasons,
+  eloSeasonsLoading,
+  selectedEloSeasonId,
+} = storeToRefs(hockeyStore)
 
 const teamId = computed(() => String(route.params.teamId || ''))
-const stageId = computed(() =>
+
+const routeStageId = computed(() =>
     route.query.stageId ? String(route.query.stageId) : undefined,
 )
 
@@ -24,6 +39,15 @@ const seasonsQuery = useQuery({
   queryKey: ['hockey-stage-options'],
   queryFn: getHockeySeasons,
   retry: false,
+})
+
+const resolvedStageId = computed(() => {
+  return (
+      routeStageId.value ||
+      (seasonsQuery.data.value?.current_stage_id
+          ? String(seasonsQuery.data.value.current_stage_id)
+          : undefined)
+  )
 })
 
 const stageSelectOptions = computed(() => {
@@ -35,16 +59,57 @@ const stageSelectOptions = computed(() => {
 
 const selectedStageLabel = computed(() => {
   const selectedStage = (seasonsQuery.data.value?.items ?? []).find(
-      (stage) => String(stage.id) === String(stageId.value),
+      (stage) => String(stage.id) === String(resolvedStageId.value),
   )
 
   return selectedStage?.label ?? 'Статистика по выбранной стадии'
 })
 
-const { data, isLoading, isFetching, isError, error } = useHockeyTeamPage(teamId, stageId)
+const eloSeasonOptions = computed(() => {
+  return eloSeasons.value.map((season) => ({
+    label: `${season.seasonLabel}${season.isActive ? ' · текущий' : ''}`,
+    value: season.seasonId,
+  }))
+})
 
-const isInitialLoading = computed(() => isLoading.value && !data.value)
+const selectedTeamEloSeasonId = computed(() => {
+  return (
+      selectedEloSeasonId.value ||
+      eloSeasons.value.find((season) => season.isActive)?.seasonId ||
+      ''
+  )
+})
+
+const {
+  data,
+  isLoading,
+  isFetching,
+  isError,
+  error,
+} = useHockeyTeamPage(
+    teamId,
+    resolvedStageId,
+)
+
+const {
+  data: eloSnapshotsData,
+  isLoading: isEloSnapshotsLoading,
+  isFetching: isEloSnapshotsFetching,
+  isError: isEloSnapshotsError,
+  error: eloSnapshotsError,
+} = useHockeyTeamEloSnapshots(
+    teamId,
+    selectedTeamEloSeasonId,
+)
+
+const isInitialLoading = computed(() => {
+  return (isLoading.value || seasonsQuery.isLoading.value) && !data.value
+})
+
 const isStageUpdating = computed(() => isFetching.value && !!data.value)
+
+const eloChartPoints = computed(() => eloSnapshotsData.value?.chart ?? [])
+const eloSummary = computed(() => eloSnapshotsData.value?.summary ?? null)
 
 const teamThemeStyle = computed(() => {
   const teamName = data.value?.team?.name
@@ -65,30 +130,55 @@ const teamThemeStyle = computed(() => {
 })
 
 async function handleStageChange(value: string) {
+  const normalizedValue = value || undefined
+
+  if (normalizedValue === routeStageId.value) {
+    return
+  }
+
   await router.replace({
     query: {
       ...route.query,
-      stageId: value || undefined,
+      stageId: normalizedValue,
     },
   })
 }
 
+function onTeamEloSeasonChange(seasonId: string | number) {
+  const normalizedSeasonId = String(seasonId)
+  hockeyStore.setSelectedEloSeason(normalizedSeasonId)
+}
+
+onMounted(() => {
+  void hockeyStore.fetchEloSeasons()
+})
+
 watch(
-    () => seasonsQuery.data.value,
+    resolvedStageId,
     async (value) => {
-      if (!value?.current_stage_id || stageId.value) {
+      if (!value || routeStageId.value === value) {
         return
       }
 
       await router.replace({
         query: {
           ...route.query,
-          stageId: String(value.current_stage_id),
+          stageId: value,
         },
       })
     },
     { immediate: true },
 )
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Хоккейный центр', to: '/hockey' },
+  { label: 'Команды', to: '/hockey/teams' },
+  {
+    label: data.value?.team?.name || 'Команда',
+    to: '',
+  },
+])
 </script>
 
 <template>
@@ -96,63 +186,88 @@ watch(
       class="hockey-team-page"
       :style="teamThemeStyle"
   >
-    <UiPageLoader
-        v-if="isInitialLoading"
-        visible
-    />
+    <UiBreadcrumbs :items="breadcrumbs" />
 
     <div
-        v-else-if="isError"
+        v-if="isError"
         class="hockey-team-page__state"
     >
       {{ error?.message || 'Не удалось загрузить страницу команды' }}
     </div>
 
     <div
-        v-else-if="!data?.team"
+        v-else-if="!isInitialLoading && !data?.team"
         class="hockey-team-page__state"
     >
       Команда не найдена
     </div>
 
     <template v-else>
-      <HockeyTeamHero :team="data.team" />
+      <HockeyTeamHero
+          :team="data?.team"
+          :is-loading="isInitialLoading"
+      />
 
       <HockeyTeamOverviewCards
-          :arena="data.arena"
-          :next-match="data.nextMatch"
-          :head-coach="data.team.headCoach"
+          :arena="data?.arena"
+          :next-match="data?.nextMatch"
+          :head-coach="data?.team?.headCoach"
+          :is-loading="isInitialLoading"
       />
 
       <HockeyTeamStats
-          :stats="data.stats"
+          :stats="data?.stats"
           :subtitle="selectedStageLabel"
           :stage-options="stageSelectOptions"
-          :stage-value="stageId ?? ''"
+          :stage-value="resolvedStageId ?? ''"
           :stage-loading="seasonsQuery.isLoading.value"
-          :is-loading="isStageUpdating"
+          :is-loading="isInitialLoading || isStageUpdating"
           @change-stage="handleStageChange"
+      />
+
+      <HockeyFilterToolbar
+          :options="eloSeasonOptions"
+          :model-value="selectedTeamEloSeasonId"
+          :is-loading="eloSeasonsLoading"
+          label="Сезон Elo"
+          placeholder="Выберите сезон"
+          @update:modelValue="onTeamEloSeasonChange"
+      />
+
+      <div
+          v-if="isEloSnapshotsError"
+          class="hockey-team-page__state"
+      >
+        {{ eloSnapshotsError?.message || 'Не удалось загрузить график Elo' }}
+      </div>
+
+      <HockeyTeamEloChart
+          v-else
+          :points="eloChartPoints"
+          :summary="eloSummary"
+          :team-name="data?.team?.name"
+          :is-loading="isEloSnapshotsLoading || isEloSnapshotsFetching"
       />
 
       <div class="hockey-team-page__matches">
         <HockeyTeamMatchesList
             title="Последние игры"
-            :matches="data.recentMatches"
+            :matches="data?.recentMatches ?? []"
             empty-text="Нет прошедших матчей"
-            :is-loading="isStageUpdating"
+            :is-loading="isInitialLoading || isStageUpdating"
         />
 
         <HockeyTeamMatchesList
             title="Будущие игры"
-            :matches="data.upcomingMatches"
+            :matches="data?.upcomingMatches ?? []"
             empty-text="Нет будущих матчей"
-            :is-loading="isStageUpdating"
+            :is-loading="isInitialLoading || isStageUpdating"
         />
       </div>
 
       <HockeyTeamRoster
-          :roster="data.roster"
-          :is-loading="isStageUpdating"
+          :roster="data?.roster"
+          :is-loading="isInitialLoading || isStageUpdating"
       />
     </template>
   </section>

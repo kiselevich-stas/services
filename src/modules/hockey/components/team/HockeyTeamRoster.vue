@@ -20,6 +20,7 @@ type Roster = {
 
 const props = defineProps<{
   roster?: Roster
+  isLoading?: boolean
 }>()
 
 type FilterKey = 'all' | 'goalkeepers' | 'defensemen' | 'forwards'
@@ -65,13 +66,17 @@ const players = computed(() => {
       </div>
     </div>
 
-    <div class="roster-filters">
+    <div
+        class="roster-filters"
+        :class="{ 'roster-filters--disabled': isLoading }"
+    >
       <button
           v-for="option in filterOptions"
           :key="option.key"
           type="button"
           class="roster-filters__button"
           :class="{ 'roster-filters__button--active': activeFilter === option.key }"
+          :disabled="isLoading"
           @click="activeFilter = option.key"
       >
         {{ option.label }}
@@ -79,7 +84,18 @@ const players = computed(() => {
     </div>
 
     <div
-        v-if="players.length"
+        v-if="isLoading"
+        class="roster-grid"
+    >
+      <HockeyTeamPlayerCard
+          v-for="item in 8"
+          :key="item"
+          :is-loading="true"
+      />
+    </div>
+
+    <div
+        v-else-if="players.length"
         class="roster-grid"
     >
       <HockeyTeamPlayerCard
@@ -126,6 +142,11 @@ const players = computed(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.roster-filters--disabled {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .roster-filters__button {
