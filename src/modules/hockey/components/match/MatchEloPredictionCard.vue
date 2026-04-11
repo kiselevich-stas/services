@@ -1,9 +1,13 @@
 <template>
   <section class="elo-card">
     <div class="elo-card__header">
-      <div>
-        <p class="elo-card__eyebrow">Прогноз</p>
-        <h3 class="elo-card__title">Вероятность победы по ELO</h3>
+      <div class="elo-card__header-main">
+        <div>
+          <p class="elo-card__eyebrow">Прогноз</p>
+          <h3 class="elo-card__title">Вероятность победы по ELO</h3>
+        </div>
+
+        <MatchEloFormulaHint :home-advantage="50" />
       </div>
 
       <div class="elo-card__badge">
@@ -71,7 +75,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getExpectedScore} from "../../lib/elo.ts";
+import { getExpectedScore } from '../../lib/elo'
+import MatchEloFormulaHint from "../tooltip/MatchEloFormulaHint.vue";
 
 interface Props {
   homeTeamName: string
@@ -141,6 +146,12 @@ function formatDelta(value: number): string {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
+}
+
+.elo-card__header-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .elo-card__eyebrow {
