@@ -3,6 +3,7 @@ import HockeyPage from "./pages/HockeyPage.vue";
 import HockeyMatchPage from "./pages/HockeyMatchPage.vue";
 import HockeyTeamsPage from "./pages/HockeyTeamsPage.vue";
 import HockeyEloPage from "./pages/HockeyEloPage.vue";
+import HockeyTeamPage from "./pages/HockeyTeamPage.vue";
 
 export const hockeyAnalyticsRoutes: RouteRecordRaw[] = [
   {
@@ -25,4 +26,9 @@ export const hockeyAnalyticsRoutes: RouteRecordRaw[] = [
     name: 'hockey-elo',
     component: HockeyEloPage,
   },
+  {
+    path: '/hockey/teams/:teamId',
+    name: 'hockey-team',
+    component: HockeyTeamPage,
+  }
 ]

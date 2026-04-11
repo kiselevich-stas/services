@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import type { HockeyTeamCard } from '../../types'
 import { getTeamColor, hexToRgba } from '../../utils/khlTeamColors'
 
@@ -55,10 +56,11 @@ const getTeamCardStyle = (teamName?: string | null) => {
         v-else
         class="teams__grid"
     >
-      <div
+      <RouterLink
           v-for="item in teams"
           :key="item.team.id"
-          class="team-card"
+          :to="`/hockey/teams/${item.team.id}`"
+          class="team-card team-card--link"
           :style="getTeamCardStyle(item.team.name)"
       >
         <div class="team-card__glow" />
@@ -100,7 +102,7 @@ const getTeamCardStyle = (teamName?: string | null) => {
             {{ item.team.conference }}
           </div>
         </div>
-      </div>
+      </RouterLink>
     </div>
   </section>
 </template>
@@ -142,7 +144,6 @@ const getTeamCardStyle = (teamName?: string | null) => {
   padding: 18px 16px;
   border-radius: 18px;
   text-align: center;
-
   border: 1px solid var(--team-color-32);
   background:
       linear-gradient(
@@ -151,17 +152,22 @@ const getTeamCardStyle = (teamName?: string | null) => {
               rgba(255, 255, 255, 0.04) 38%,
               rgba(255, 255, 255, 0.03) 100%
       );
-
   box-shadow:
       0 10px 24px rgba(0, 0, 0, 0.22),
       inset 0 0 0 1px rgba(255, 255, 255, 0.03),
       0 0 20px var(--team-color-08);
-
   transition:
       transform 0.25s ease,
       border-color 0.25s ease,
       box-shadow 0.25s ease,
       background 0.25s ease;
+}
+
+.team-card--link {
+  display: grid;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 
 .team-card::before {
