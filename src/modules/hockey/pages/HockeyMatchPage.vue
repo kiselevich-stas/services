@@ -18,7 +18,10 @@
       Матч не найден
     </div>
 
-    <Transition name="page-fade" appear>
+    <Transition
+        name="page-fade"
+        appear
+    >
       <div
           v-if="matchDetails"
           class="match-page__content"
@@ -82,6 +85,25 @@
               :head-to-head="matchDetails.headToHead"
               :team-a="matchDetails.teamA"
               :team-b="matchDetails.teamB"
+          />
+
+          <div
+              v-if="headToHeadEloIsError"
+              class="match-page__state match-page__state--error match-card--full"
+          >
+            {{ headToHeadEloError?.message || 'Не удалось загрузить Elo-аналитику очных встреч' }}
+          </div>
+
+          <MatchHeadToHeadEloCard
+              v-else
+              class="match-card--full"
+              :points="headToHeadEloChart"
+              :summary="headToHeadEloSummary"
+              :splits="headToHeadEloSplits"
+              :recent-matches="headToHeadRecentMatches"
+              :team-a-name="matchDetails.teamA?.name"
+              :team-b-name="matchDetails.teamB?.name"
+              :is-loading="headToHeadEloLoading || headToHeadEloFetching"
           />
 
           <MatchStatsComparison
@@ -179,6 +201,9 @@ import MatchEloPredictionCard from '../components/match/MatchEloPredictionCard.v
 import UiBreadcrumbs from '../../../components/ui/breadcrumbs/UiBreadcrumbs.vue'
 
 import { useMatchDetailsView } from '../composables/useMatchDetailsView'
+import { useMatchHeadToHeadElo } from '../composables/useMatchHeadToHeadElo'
+import HockeyTeamEloChart from "../components/team/HockeyTeamEloChart.vue";
+import MatchHeadToHeadEloCard from "../components/match/MatchHeadToHeadEloCard.vue";
 
 const route = useRoute()
 const hockeyStore = hockey()
@@ -190,9 +215,22 @@ const {
   matchEloPrediction,
   matchEloPredictionLoading,
   matchEloPredictionError,
+  selectedEloSeasonId,
 } = storeToRefs(hockeyStore)
 
 const matchId = computed(() => String(route.params.id || ''))
+
+const teamAId = computed(() => {
+  return matchDetails.value?.teamA?.id
+      ? String(matchDetails.value.teamA.id)
+      : undefined
+})
+
+const teamBId = computed(() => {
+  return matchDetails.value?.teamB?.id
+      ? String(matchDetails.value.teamB.id)
+      : undefined
+})
 
 const {
   formattedScore,
@@ -204,6 +242,22 @@ const {
   getTeamNameById,
 } = useMatchDetailsView(matchDetails)
 
+const {
+  data: headToHeadEloData,
+  isLoading: headToHeadEloLoading,
+  isFetching: headToHeadEloFetching,
+  isError: headToHeadEloIsError,
+  error: headToHeadEloError,
+} = useMatchHeadToHeadElo(
+    teamAId,
+    teamBId,
+    selectedEloSeasonId,
+)
+
+const headToHeadEloChart = computed(() => headToHeadEloData.value?.chart ?? [])
+const headToHeadEloSummary = computed(() => headToHeadEloData.value?.summary ?? null)
+const headToHeadEloSplits = computed(() => headToHeadEloData.value?.splits ?? null)
+const headToHeadRecentMatches = computed(() => headToHeadEloData.value?.recentMatches ?? [])
 
 const shouldShowEloBlock = computed(() => {
   return matchDetails.value?.gameStateKey !== 'finished'
