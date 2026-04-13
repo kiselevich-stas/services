@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
 import WorklogEntryForm from '../components/WorklogEntryForm.vue'
+
+import { useProjectStore } from '../store/project'
 import { useWorklogStore } from '../store/worklog'
+
 import type { WorkLogInsertPayload } from '../types'
 
 const route = useRoute()
 const router = useRouter()
+
 const worklogStore = useWorklogStore()
+const projectStore = useProjectStore()
 
 const worklogId = computed(() => String(route.params.id || ''))
 
@@ -16,18 +22,23 @@ const currentLog = computed(() => {
 })
 
 const pageTitle = computed(() => {
-  return currentLog.value?.project
-      ? `Редактирование: ${currentLog.value.project}`
+  return currentLog.value?.projectName
+      ? `Редактирование: ${currentLog.value.projectName}`
       : 'Редактирование записи'
 })
 
+const isReady = computed(() => {
+  return Boolean(currentLog.value) && projectStore.projects.length > 0
+})
+
 onMounted(async () => {
-  if (!worklogStore.logs.length) {
-    try {
-      await worklogStore.loadLogs()
-    } catch {
-      return
-    }
+  try {
+    await Promise.all([
+      projectStore.loadProjects(),
+      worklogStore.loadLogs(),
+    ])
+  } catch {
+    return
   }
 
   if (!currentLog.value) {
@@ -61,21 +72,30 @@ async function handleCancel(): Promise<void> {
   <div class="worklog-edit-page">
     <section class="worklog-edit-hero">
       <p class="worklog-edit-hero__eyebrow">Worklog</p>
+
       <h1 class="worklog-edit-hero__title">
         {{ pageTitle }}
       </h1>
+
       <p class="worklog-edit-hero__text">
         Измени дату, количество часов, проект или комментарий и сохрани обновленную запись.
       </p>
     </section>
 
     <WorklogEntryForm
-        v-if="currentLog"
+        v-if="isReady"
         :model-value="currentLog"
         :loading="worklogStore.saving"
         @submit="handleSubmit"
         @cancel="handleCancel"
     />
+
+    <div v-else class="worklog-edit-empty panel">
+      <p class="worklog-edit-empty__title">Загружаем запись</p>
+      <p class="worklog-edit-empty__text">
+        Подготавливаем данные проекта и историю worklog.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -119,6 +139,24 @@ async function handleCancel(): Promise<void> {
   font-size: 16px;
   line-height: 1.65;
   color: rgba(255, 255, 255, 0.72);
+}
+
+.worklog-edit-empty {
+  padding: 24px;
+  border-radius: 24px;
+  text-align: center;
+}
+
+.worklog-edit-empty__title {
+  margin: 0 0 8px;
+  color: #fff;
+  font-size: 20px;
+}
+
+.worklog-edit-empty__text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.55;
 }
 
 @media (max-width: 720px) {

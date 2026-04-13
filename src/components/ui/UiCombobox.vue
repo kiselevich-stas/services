@@ -45,9 +45,7 @@
       >
         <span
             class="ui-field__arrow"
-            :class="{
-            'ui-field__arrow--opened': isDropdownVisible,
-          }"
+            :class="{ 'ui-field__arrow--opened': isDropdownVisible }"
             aria-hidden="true"
         >
           <svg
@@ -80,10 +78,10 @@
                 type="button"
                 class="ui-field__option"
                 :class="{
-          'ui-field__option--selected': option.value === modelValue,
-          'ui-combobox__option--highlighted': index === highlightedIndex,
-          'ui-combobox__option--default': option.value !== modelValue,
-        }"
+                'ui-field__option--selected': option.value === modelValue,
+                'ui-combobox__option--highlighted': index === highlightedIndex,
+                'ui-combobox__option--default': option.value !== modelValue,
+              }"
                 @mousedown.prevent="selectOption(option)"
                 @mouseenter="highlightedIndex = index"
             >
@@ -94,22 +92,22 @@
                   class="ui-field__option-check"
                   aria-hidden="true"
               >
-          <svg
-              width="16"
-              height="16"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-                d="M4.5 10.5L8 14L15.5 6.5"
-                stroke="currentColor"
-                stroke-width="1.8"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-          </svg>
-        </span>
+                <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                      d="M4.5 10.5L8 14L15.5 6.5"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                  />
+                </svg>
+              </span>
             </button>
           </template>
 
@@ -149,7 +147,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   label: '',
-  placeholder: 'Выберите или введите значение',
+  placeholder: 'Выберите значение',
   error: '',
   id: '',
   disabled: false,
@@ -172,8 +170,7 @@ watch(
     () => props.modelValue,
     (value) => {
       const selectedOption = props.options.find((option) => option.value === value)
-
-      inputValue.value = selectedOption?.label ?? value
+      inputValue.value = selectedOption?.label ?? ''
     },
     { immediate: true },
 )
@@ -196,12 +193,7 @@ const isDropdownVisible = computed(() => {
   return isOpen.value
 })
 
-watch(filteredOptions, (options) => {
-  if (!options.length) {
-    highlightedIndex.value = 0
-    return
-  }
-
+watch(filteredOptions, () => {
   highlightedIndex.value = 0
 })
 
@@ -248,31 +240,6 @@ function emitValue(value: string): void {
   emit('update:modelValue', value)
 }
 
-function normalizeValue(value: string): string {
-  return value.trim().replace(/\s+/g, ' ')
-}
-
-function findOptionByLabel(label: string): UiComboboxOption | undefined {
-  const normalizedLabel = normalizeValue(label).toLocaleLowerCase()
-
-  return props.options.find(
-      (option) => option.label.trim().toLocaleLowerCase() === normalizedLabel,
-  )
-}
-
-function commitInputValue(): void {
-  const normalizedValue = normalizeValue(inputValue.value)
-  const matchedOption = findOptionByLabel(normalizedValue)
-
-  if (matchedOption) {
-    inputValue.value = matchedOption.label
-    emitValue(matchedOption.value)
-  } else {
-    inputValue.value = normalizedValue
-    emitValue(normalizedValue)
-  }
-}
-
 function handleFocus(): void {
   clearBlurTimeout()
   openDropdown()
@@ -297,19 +264,29 @@ function selectOption(option: UiComboboxOption): void {
 function handleEnter(): void {
   const activeOption = filteredOptions.value[highlightedIndex.value]
 
-  if (isDropdownVisible.value && activeOption) {
+  if (activeOption) {
     selectOption(activeOption)
     return
   }
 
-  commitInputValue()
   closeDropdown()
   emit('blur')
 }
 
 function handleBlur(): void {
   blurTimeoutId.value = window.setTimeout(() => {
-    commitInputValue()
+    const selectedOption = props.options.find(
+        (option) => option.label.toLocaleLowerCase() === inputValue.value.trim().toLocaleLowerCase(),
+    )
+
+    if (selectedOption) {
+      inputValue.value = selectedOption.label
+      emitValue(selectedOption.value)
+    } else {
+      const currentOption = props.options.find((option) => option.value === props.modelValue)
+      inputValue.value = currentOption?.label ?? ''
+    }
+
     closeDropdown()
     emit('blur')
   }, 120)
@@ -350,7 +327,10 @@ function handleClickOutside(event: MouseEvent): void {
 
   if (!rootRef.value.contains(target)) {
     clearBlurTimeout()
-    commitInputValue()
+
+    const currentOption = props.options.find((option) => option.value === props.modelValue)
+    inputValue.value = currentOption?.label ?? ''
+
     closeDropdown()
     emit('blur')
   }
@@ -497,14 +477,6 @@ onBeforeUnmount(() => {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.ui-field__option--selected:hover {
-  background: linear-gradient(
-          135deg,
-          rgba(139, 92, 246, 0.42),
-          rgba(236, 72, 153, 0.3)
-  );
-}
-
 .ui-field__option-check {
   flex-shrink: 0;
   color: rgba(255, 255, 255, 0.9);
@@ -556,6 +528,12 @@ onBeforeUnmount(() => {
   transform: rotate(180deg);
 }
 
+.ui-combobox__empty {
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
 .ui-select-fade-enter-active,
 .ui-select-fade-leave-active {
   transition:
@@ -568,10 +546,5 @@ onBeforeUnmount(() => {
 .ui-select-fade-leave-to {
   opacity: 0;
   transform: translateY(-6px) scaleY(0.98);
-}
-.ui-combobox__empty {
-  padding: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
 }
 </style>

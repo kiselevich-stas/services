@@ -55,7 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
   isLoading: false,
 })
 
-const hasData = computed(() => props.points.length > 0)
+const hasData = computed(() => props.points?.length > 0)
 
 const lineChartOption = computed(() => ({
   tooltip: {

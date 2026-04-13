@@ -7,7 +7,7 @@ import UiInput from '../../../components/ui/UiInput.vue'
 import UiTextarea from '../../../components/ui/UiTextarea.vue'
 
 import { useZodForm } from '../../../shared/composables/useZodForm'
-import { useWorklogStore } from '../store/worklog'
+import { useProjectStore } from '../store/project'
 import {
   getDefaultWorklogValues,
   toWorklogPayload,
@@ -35,7 +35,7 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const worklogStore = useWorklogStore()
+const projectStore = useProjectStore()
 
 const form = ref<WorkLogFormValues>(getDefaultWorklogValues())
 
@@ -67,7 +67,7 @@ function syncForm(value: WorkLog | null): void {
   form.value = {
     workDate: value.workDate,
     hours: String(value.hours),
-    project: value.project,
+    projectId: value.projectId,
     note: value.note ?? '',
   }
 
@@ -75,8 +75,7 @@ function syncForm(value: WorkLog | null): void {
 }
 
 function handleProjectChange(value: string): void {
-  form.value.project = value
-  handleInput('project')
+  form.value.projectId = value
 }
 
 function handleSubmit(): void {
@@ -149,14 +148,14 @@ watch(
       />
 
       <UiCombobox
-          :model-value="form.project"
+          :model-value="form.projectId"
           class="worklog-form__full"
           label="Проект"
-          placeholder="Выберите существующий или введите новый"
-          :options="worklogStore.projectOptions"
-          :error="errors.project"
+          placeholder="Выберите проект"
+          :options="projectStore.projectOptions"
+          :error="errors.projectId"
           @update:model-value="handleProjectChange"
-          @blur="handleBlur('project')"
+          @blur="handleBlur('projectId')"
       />
 
       <UiTextarea

@@ -1,11 +1,18 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+
 import WorklogEntryForm from '../components/WorklogEntryForm.vue'
+
 import { useWorklogStore } from '../store/worklog'
+import { useProjectStore } from '../store/project'
+
 import type { WorkLogInsertPayload } from '../types'
 
 const router = useRouter()
+
 const worklogStore = useWorklogStore()
+const projectStore = useProjectStore()
 
 async function handleSubmit(payload: WorkLogInsertPayload): Promise<void> {
   try {
@@ -19,6 +26,14 @@ async function handleSubmit(payload: WorkLogInsertPayload): Promise<void> {
 async function handleCancel(): Promise<void> {
   await router.push('/worklog')
 }
+
+onMounted(async () => {
+  try {
+    await projectStore.loadProjects()
+  } catch {
+    // тост уже показан
+  }
+})
 </script>
 
 <template>
@@ -31,11 +46,21 @@ async function handleCancel(): Promise<void> {
       </p>
     </section>
 
+    <!-- 👇 важно: ждём загрузку проектов -->
     <WorklogEntryForm
+        v-if="projectStore.projects.length"
         :loading="worklogStore.saving"
         @submit="handleSubmit"
         @cancel="handleCancel"
     />
+
+    <!-- 👇 fallback -->
+    <div v-else class="worklog-empty panel">
+      <p class="worklog-empty__title">Нет проектов</p>
+      <p class="worklog-empty__text">
+        Сначала создай хотя бы один проект, чтобы добавить запись.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -79,6 +104,22 @@ async function handleCancel(): Promise<void> {
   font-size: 16px;
   line-height: 1.65;
   color: rgba(255, 255, 255, 0.72);
+}
+
+.worklog-empty {
+  padding: 24px;
+  border-radius: 24px;
+  text-align: center;
+}
+
+.worklog-empty__title {
+  color: #fff;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+
+.worklog-empty__text {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 @media (max-width: 720px) {

@@ -18,10 +18,10 @@ export const worklogSchema = z.object({
         return Number.isFinite(parsedValue) && parsedValue > 0
       }, 'Количество часов должно быть больше 0'),
 
-  project: z
+  projectId: z
       .string()
       .trim()
-      .min(1, 'Укажите проект'),
+      .min(1, 'Выберите проект'),
 
   note: z
       .string()
@@ -33,7 +33,7 @@ export function getDefaultWorklogValues(): WorkLogFormValues {
   return {
     workDate: new Date().toISOString().slice(0, 10),
     hours: '',
-    project: '',
+    projectId: '',
     note: '',
   }
 }
@@ -44,7 +44,7 @@ export function toWorklogPayload(values: WorkLogFormValues): WorkLogInsertPayloa
   return {
     workDate: parsedValues.workDate,
     hours: Number(parsedValues.hours.replace(',', '.')),
-    project: parsedValues.project.trim(),
+    projectId: parsedValues.projectId.trim(),
     note: parsedValues.note.trim(),
   }
 }

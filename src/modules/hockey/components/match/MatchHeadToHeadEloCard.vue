@@ -92,7 +92,7 @@ const GRID_COLOR = 'rgba(255,255,255,0.08)'
 
 const selectedPerspective = ref<PerspectiveTeam>('A')
 
-const hasData = computed(() => props.points.length > 0)
+const hasData = computed(() => props.points?.length > 0)
 
 const teamA = computed(() => props.teamAName || 'Команда 1')
 const teamB = computed(() => props.teamBName || 'Команда 2')

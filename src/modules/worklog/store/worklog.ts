@@ -14,19 +14,15 @@ import type {
   WorkLogUpdatePayload,
 } from '../types'
 
-export interface WorklogProjectOption {
-  label: string
-  value: string
-}
-
 function mapWorkLog(row: WorkLogRow): WorkLog {
   return {
     id: row.id,
     userId: row.user_id,
     workDate: row.work_date,
     hours: Number(row.hours),
-    project: row.project,
-    note: row.note,
+    projectId: row.project_id,
+    projectName: row.projects?.name ?? 'Без проекта',
+    note: row.note ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -70,10 +66,6 @@ function roundHours(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-function normalizeProjectName(value: string): string {
-  return value.trim().replace(/\s+/g, ' ')
-}
-
 function datesDiffInDays(from: string, to: string): number {
   const fromDate = new Date(`${from}T00:00:00`)
   const toDate = new Date(`${to}T00:00:00`)
@@ -107,31 +99,6 @@ export const useWorklogStore = defineStore('worklog', () => {
 
       return secondDate.localeCompare(firstDate)
     })
-  })
-
-  const projectOptions = computed<WorklogProjectOption[]>(() => {
-    const uniqueProjects = new Map<string, WorklogProjectOption>()
-
-    logs.value.forEach((log) => {
-      const normalizedProject = normalizeProjectName(log.project)
-
-      if (!normalizedProject) {
-        return
-      }
-
-      const projectKey = normalizedProject.toLocaleLowerCase()
-
-      if (!uniqueProjects.has(projectKey)) {
-        uniqueProjects.set(projectKey, {
-          label: normalizedProject,
-          value: normalizedProject,
-        })
-      }
-    })
-
-    return [...uniqueProjects.values()].sort((firstOption, secondOption) =>
-        firstOption.label.localeCompare(secondOption.label, 'ru'),
-    )
   })
 
   const stats = computed<
@@ -269,7 +236,7 @@ export const useWorklogStore = defineStore('worklog', () => {
     const projectMap = new Map<string, number>()
 
     allLogs.forEach((log) => {
-      const projectName = normalizeProjectName(log.project) || 'Без проекта'
+      const projectName = log.projectName || 'Без проекта'
 
       projectMap.set(
           projectName,
@@ -287,7 +254,7 @@ export const useWorklogStore = defineStore('worklog', () => {
     allLogs
         .filter((log) => log.workDate.startsWith(monthPrefix))
         .forEach((log) => {
-          const projectName = normalizeProjectName(log.project) || 'Без проекта'
+          const projectName = log.projectName || 'Без проекта'
 
           monthlyProjectMap.set(
               projectName,
@@ -340,11 +307,7 @@ export const useWorklogStore = defineStore('worklog', () => {
     const recentProjects = Array.from(
         new Map(
             sortedLogs.value
-                .map((log) => {
-                  const projectName = normalizeProjectName(log.project)
-
-                  return [projectName.toLocaleLowerCase(), projectName] as const
-                })
+                .map((log) => [log.projectId, log.projectName] as const)
                 .filter(([, projectName]) => Boolean(projectName)),
         ).values(),
     ).slice(0, 5)
@@ -395,7 +358,20 @@ export const useWorklogStore = defineStore('worklog', () => {
     try {
       const { data, error } = await supabase
           .from('work_logs')
-          .select('id, user_id, work_date, hours, project, note, created_at, updated_at')
+          .select(`
+          id,
+          user_id,
+          work_date,
+          hours,
+          project_id,
+          note,
+          created_at,
+          updated_at,
+          projects (
+            id,
+            name
+          )
+        `)
           .eq('user_id', userId)
           .order('work_date', { ascending: false })
           .order('created_at', { ascending: false })
@@ -404,7 +380,7 @@ export const useWorklogStore = defineStore('worklog', () => {
         throw error
       }
 
-      logs.value = (data ?? []).map(mapWorkLog)
+      logs.value = ((data ?? []) as WorkLogRow[]).map(mapWorkLog)
       initialized.value = true
     } catch (error) {
       toastStore.error(
@@ -427,8 +403,6 @@ export const useWorklogStore = defineStore('worklog', () => {
       throw new Error(message)
     }
 
-    const normalizedProject = normalizeProjectName(payload.project)
-
     saving.value = true
 
     try {
@@ -438,17 +412,30 @@ export const useWorklogStore = defineStore('worklog', () => {
             user_id: userId,
             work_date: payload.workDate,
             hours: payload.hours,
-            project: normalizedProject,
+            project_id: payload.projectId,
             note: payload.note.trim(),
           })
-          .select('id, user_id, work_date, hours, project, note, created_at, updated_at')
+          .select(`
+          id,
+          user_id,
+          work_date,
+          hours,
+          project_id,
+          note,
+          created_at,
+          updated_at,
+          projects (
+            id,
+            name
+          )
+        `)
           .single()
 
       if (error) {
         throw error
       }
 
-      logs.value = [mapWorkLog(data), ...logs.value]
+      logs.value = [mapWorkLog(data as WorkLogRow), ...logs.value]
 
       toastStore.success(
           'Запись добавлена',
@@ -466,8 +453,6 @@ export const useWorklogStore = defineStore('worklog', () => {
   }
 
   async function updateLog(payload: WorkLogUpdatePayload): Promise<void> {
-    const normalizedProject = normalizeProjectName(payload.project)
-
     saving.value = true
 
     try {
@@ -476,18 +461,31 @@ export const useWorklogStore = defineStore('worklog', () => {
           .update({
             work_date: payload.workDate,
             hours: payload.hours,
-            project: normalizedProject,
+            project_id: payload.projectId,
             note: payload.note.trim(),
           })
           .eq('id', payload.id)
-          .select('id, user_id, work_date, hours, project, note, created_at, updated_at')
+          .select(`
+          id,
+          user_id,
+          work_date,
+          hours,
+          project_id,
+          note,
+          created_at,
+          updated_at,
+          projects (
+            id,
+            name
+          )
+        `)
           .single()
 
       if (error) {
         throw error
       }
 
-      const updatedLog = mapWorkLog(data)
+      const updatedLog = mapWorkLog(data as WorkLogRow)
 
       logs.value = logs.value.map((log) =>
           log.id === updatedLog.id ? updatedLog : log,
@@ -532,6 +530,44 @@ export const useWorklogStore = defineStore('worklog', () => {
     }
   }
 
+  const todayFocus = computed(() => {
+    const today = new Date().toISOString().slice(0, 10)
+
+    const todayLogs = logs.value.filter(
+        (log) => log.workDate === today,
+    )
+
+    if (!todayLogs.length) {
+      return {
+        project: '',
+        hours: 0,
+      }
+    }
+
+    const map: Record<string, number> = {}
+
+    for (const log of todayLogs) {
+      if (!log.project) continue
+
+      map[log.project] = (map[log.project] || 0) + log.hours
+    }
+
+    let topProject = ''
+    let max = 0
+
+    for (const key in map) {
+      if (map[key] > max) {
+        max = map[key]
+        topProject = key
+      }
+    }
+
+    return {
+      project: topProject,
+      hours: max,
+    }
+  })
+
   return {
     logs,
     sortedLogs,
@@ -540,11 +576,12 @@ export const useWorklogStore = defineStore('worklog', () => {
     deletingId,
     initialized,
     stats,
-    projectOptions,
     topProjectHours,
     loadLogs,
     addLog,
     updateLog,
     removeLog,
+
+    todayFocus
   }
 })

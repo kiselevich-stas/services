@@ -1,12 +1,18 @@
+export interface WorkLogProjectRow {
+  id: string
+  name: string
+}
+
 export interface WorkLogRow {
   id: string
   user_id: string
   work_date: string
   hours: number
-  project: string
+  project_id: string
   note: string
   created_at: string
   updated_at: string
+  projects: WorkLogProjectRow | null
 }
 
 export interface WorkLog {
@@ -14,7 +20,8 @@ export interface WorkLog {
   userId: string
   workDate: string
   hours: number
-  project: string
+  projectId: string
+  projectName: string
   note: string
   createdAt: string
   updatedAt: string
@@ -23,14 +30,14 @@ export interface WorkLog {
 export interface WorkLogFormValues {
   workDate: string
   hours: string
-  project: string
+  projectId: string
   note: string
 }
 
 export interface WorkLogInsertPayload {
   workDate: string
   hours: number
-  project: string
+  projectId: string
   note: string
 }
 
