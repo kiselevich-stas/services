@@ -9,6 +9,7 @@ import { useAuthStore } from './stores/auth'
 import { usePreferencesStore } from './stores/preferences'
 
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-routing-machine/dist/leaflet-routing-machine.css'
 import './styles/main.scss'
 
 async function bootstrap() {
