@@ -10,7 +10,6 @@ import WorklogSummaryCards from '../components/WorklogSummaryCards.vue'
 
 import { useProjectStore } from '../store/project'
 import { useWorklogStore } from '../store/worklog'
-import WorklogFocusCard from "../components/WorklogFocusCard.vue";
 
 const worklogStore = useWorklogStore()
 const projectStore = useProjectStore()
@@ -18,7 +17,7 @@ const projectStore = useProjectStore()
 const stats = computed(() => worklogStore.stats)
 const sortedLogs = computed(() => worklogStore.sortedLogs)
 const topProjectHours = computed(() => worklogStore.topProjectHours)
-const todayFocus = computed(() => worklogStore.todayFocus)
+
 
 
 const weekDeltaLabel = computed(() => {
@@ -167,11 +166,9 @@ async function handleRemove(id: string): Promise<void> {
 
       <section class="worklog-layout">
         <WorklogCharts :stats="stats" />
+
       </section>
-      <WorklogFocusCard
-          :project="todayFocus.project"
-          :hours="todayFocus.hours"
-      />      <WorklogHistoryList
+      <WorklogHistoryList
           :logs="sortedLogs"
           :deleting-id="worklogStore.deletingId"
           @remove="handleRemove"

@@ -86,6 +86,7 @@ const {
   isFetching,
   isError,
   error,
+  refetch,
 } = useHockeyTeamPage(
     teamId,
     resolvedStageId,
@@ -106,7 +107,9 @@ const isInitialLoading = computed(() => {
   return (isLoading.value || seasonsQuery.isLoading.value) && !data.value
 })
 
-const isStageUpdating = computed(() => isFetching.value && !!data.value)
+const isStageUpdating = computed(() => {
+  return isFetching.value && !!data.value
+})
 
 const eloChartPoints = computed(() => eloSnapshotsData.value?.chart ?? [])
 const eloSummary = computed(() => eloSnapshotsData.value?.summary ?? null)
@@ -154,6 +157,10 @@ onMounted(() => {
   void hockeyStore.fetchEloSeasons()
 })
 
+/**
+ * Если в URL нет stageId, но мы уже получили current_stage_id,
+ * синхронизируем его в query-параметр.
+ */
 watch(
     resolvedStageId,
     async (value) => {
@@ -169,6 +176,26 @@ watch(
       })
     },
     { immediate: true },
+)
+
+/**
+ * Принудительный refetch при смене teamId или stageId.
+ * Это исправляет ситуацию, когда composable/useQuery
+ * не перезапрашивает данные автоматически.
+ */
+watch(
+    [teamId, resolvedStageId],
+    async ([newTeamId, newStageId], [oldTeamId, oldStageId]) => {
+      if (!newTeamId || !newStageId) {
+        return
+      }
+
+      if (newTeamId === oldTeamId && newStageId === oldStageId) {
+        return
+      }
+
+      await refetch()
+    },
 )
 
 const breadcrumbs = computed(() => [
@@ -209,23 +236,6 @@ const breadcrumbs = computed(() => [
           :is-loading="isInitialLoading"
       />
 
-      <HockeyTeamOverviewCards
-          :arena="data?.arena"
-          :next-match="data?.nextMatch"
-          :head-coach="data?.team?.headCoach"
-          :is-loading="isInitialLoading"
-      />
-
-      <HockeyTeamStats
-          :stats="data?.stats"
-          :subtitle="selectedStageLabel"
-          :stage-options="stageSelectOptions"
-          :stage-value="resolvedStageId ?? ''"
-          :stage-loading="seasonsQuery.isLoading.value"
-          :is-loading="isInitialLoading || isStageUpdating"
-          @change-stage="handleStageChange"
-      />
-
       <HockeyFilterToolbar
           :options="eloSeasonOptions"
           :model-value="selectedTeamEloSeasonId"
@@ -249,6 +259,23 @@ const breadcrumbs = computed(() => [
           :team-name="data?.team?.name"
           :splits="eloSplits"
           :is-loading="isEloSnapshotsLoading || isEloSnapshotsFetching"
+      />
+
+      <HockeyTeamOverviewCards
+          :arena="data?.arena"
+          :next-match="data?.nextMatch"
+          :head-coach="data?.team?.headCoach"
+          :is-loading="isInitialLoading"
+      />
+
+      <HockeyTeamStats
+          :stats="data?.stats"
+          :subtitle="selectedStageLabel"
+          :stage-options="stageSelectOptions"
+          :stage-value="resolvedStageId ?? ''"
+          :stage-loading="seasonsQuery.isLoading.value"
+          :is-loading="isInitialLoading || isStageUpdating"
+          @change-stage="handleStageChange"
       />
 
       <div class="hockey-team-page__matches">

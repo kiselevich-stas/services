@@ -547,9 +547,9 @@ export const useWorklogStore = defineStore('worklog', () => {
     const map: Record<string, number> = {}
 
     for (const log of todayLogs) {
-      if (!log.project) continue
+      const projectName = log.projectName || 'Без проекта'
 
-      map[log.project] = (map[log.project] || 0) + log.hours
+      map[projectName] = (map[projectName] || 0) + log.hours
     }
 
     let topProject = ''

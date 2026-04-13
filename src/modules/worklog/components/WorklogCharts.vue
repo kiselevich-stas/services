@@ -6,7 +6,10 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, BarChart, PieChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import type { WorkLogStats } from '../types'
+import WorklogFocusCard from "./WorklogFocusCard.vue";
+import { useWorklogStore } from '../store/worklog'
 
+const worklogStore = useWorklogStore()
 use([
   CanvasRenderer,
   LineChart,
@@ -20,6 +23,8 @@ use([
 const props = defineProps<{
   stats: WorkLogStats
 }>()
+
+const todayFocus = computed(() => worklogStore.todayFocus)
 
 const chartTextColor = 'rgba(255, 255, 255, 0.72)'
 const chartGridColor = 'rgba(255, 255, 255, 0.08)'
@@ -191,7 +196,7 @@ const projectOptions = computed(() => ({
       <VChart class="worklog-chart" :option="weekOptions" autoresize />
     </article>
 
-    <article class="worklog-chart-card worklog-chart-card--wide">
+    <article class="worklog-chart-card">
       <div class="worklog-chart-card__header">
         <p class="worklog-chart-card__eyebrow">Проекты</p>
         <h3 class="worklog-chart-card__title">Во что уходит время</h3>
@@ -199,6 +204,11 @@ const projectOptions = computed(() => ({
       </div>
       <VChart class="worklog-chart worklog-chart--pie" :option="projectOptions" autoresize />
     </article>
+      <WorklogFocusCard
+          :project="todayFocus.project"
+          :hours="todayFocus.hours"
+      />
+
   </section>
 </template>
 

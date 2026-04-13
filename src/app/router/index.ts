@@ -54,15 +54,22 @@ export const router = createRouter({
         }
     ],
     scrollBehavior(to, from, savedPosition) {
+        // 1. Если есть сохранённая позиция (назад/вперёд)
         if (savedPosition) {
             return savedPosition
         }
 
+        // 2. Если изменился только query (например stageId)
+        if (to.path === from.path) {
+            return false
+        }
+
+        // 3. Обычное поведение
         return {
             top: 0,
             behavior: 'smooth',
         }
-    },
+    }
 })
 
 /**

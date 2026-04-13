@@ -25,14 +25,14 @@ const modules = computed(() => [
     enabled: true,
     requiresAuth: false,
   },
-  // {
-  //   title: 'KHL Head-to-Head',
-  //   description: 'Сравнивай команды, смотри личные встречи, победы, шайбы и последние матчи',
-  //   route: '/hockey',
-  //   theme: 'hockey',
-  //   enabled: true,
-  //   requiresAuth: false,
-  // },
+  {
+    title: 'KHL Head-to-Head',
+    description: 'Сравнивай команды, смотри личные встречи, победы, шайбы и последние матчи',
+    route: '/hockey',
+    theme: 'hockey',
+    enabled: true,
+    requiresAuth: false,
+  },
   {
     title: 'Таймеры',
     description: 'Создавай, отслеживай и управляй обратными отсчётами в одном месте',
