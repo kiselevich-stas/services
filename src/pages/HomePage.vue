@@ -9,6 +9,7 @@ import WorklogModulePreview from "../components/preview/WorklogModulePreview.vue
 import HockeyModulePreview from '../components/preview/HockeyModulePreview.vue'
 import { usePreferencesStore } from '../stores/preferences.ts'
 import { useAuthStore } from '../stores/auth.ts'
+import VacationModulePreview from "../components/preview/VacationModulePreview.vue";
 
 const router = useRouter()
 const preferencesStore = usePreferencesStore()
@@ -23,6 +24,14 @@ const modules = computed(() => [
     route: '/worklog',
     theme: 'worklog',
     enabled: preferencesStore.isModuleEnabled('worklog'),
+    requiresAuth: true,
+  },
+  {
+    title: 'Планировщик отпуска',
+    description: 'Маршрут по дням, точки на карте, чеклист документов и билетов в одном красивом модуле',
+    route: '/vacation',
+    theme: 'vacation',
+    enabled: true,
     requiresAuth: true,
   },
   {
@@ -97,6 +106,7 @@ function goTo(route: string, requiresAuth: boolean) {
             <WorkspaceModulePreview v-else-if="module.theme === 'workspace'" />
             <HockeyModulePreview v-else-if="module.theme === 'hockey'" />
             <WorklogModulePreview v-else-if="module.theme === 'worklog'" />
+            <VacationModulePreview v-else-if="module.theme === 'vacation'" />
           </div>
 
           <div class="module-card__content">
@@ -332,6 +342,18 @@ function goTo(route: string, requiresAuth: boolean) {
 @media (max-width: 980px) {
   .modules-grid {
     grid-template-columns: 1fr;
+  }
+}
+.module-card--vacation {
+  background:
+      radial-gradient(circle at 16% 18%, rgba(236, 72, 153, 0.2), transparent 28%),
+      radial-gradient(circle at 82% 18%, rgba(6, 182, 212, 0.18), transparent 32%),
+      radial-gradient(circle at 72% 84%, rgba(34, 197, 94, 0.14), transparent 34%),
+      rgba(255, 255, 255, 0.04);
+
+  &:hover {
+    border-color: rgba(236, 72, 153, 0.36);
+    box-shadow: 0 18px 45px rgba(139, 92, 246, 0.18);
   }
 }
 </style>
