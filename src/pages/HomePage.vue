@@ -18,20 +18,12 @@ const isAuthorized = computed(() => Boolean(authStore.user))
 
 const modules = computed(() => [
   {
-    title: 'Погода',
-    description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
-    route: '/weather',
-    theme: 'weather',
-    enabled: true,
-    requiresAuth: false,
-  },
-  {
-    title: 'KHL Head-to-Head',
-    description: 'Сравнивай команды, смотри личные встречи, победы, шайбы и последние матчи',
-    route: '/hockey',
-    theme: 'hockey',
-    enabled: true,
-    requiresAuth: false,
+    title: 'Учет времени',
+    description: 'Фиксируй рабочие часы, анализируй нагрузку и смотри красивую статистику по проектам',
+    route: '/worklog',
+    theme: 'worklog',
+    enabled: preferencesStore.isModuleEnabled('worklog'),
+    requiresAuth: true,
   },
   {
     title: 'Таймеры',
@@ -50,12 +42,20 @@ const modules = computed(() => [
     requiresAuth: true,
   },
   {
-    title: 'Учет времени',
-    description: 'Фиксируй рабочие часы, анализируй нагрузку и смотри красивую статистику по проектам',
-    route: '/worklog',
-    theme: 'worklog',
-    enabled: preferencesStore.isModuleEnabled('worklog'),
-    requiresAuth: true,
+    title: 'Погода',
+    description: 'Смотри прогноз, комфорт и рекомендации для прогулок и поездок',
+    route: '/weather',
+    theme: 'weather',
+    enabled: true,
+    requiresAuth: false,
+  },
+  {
+    title: 'KHL Head-to-Head',
+    description: 'Сравнивай команды, смотри личные встречи, победы, шайбы и последние матчи',
+    route: '/hockey',
+    theme: 'hockey',
+    enabled: true,
+    requiresAuth: false,
   },
 ].filter(module => module.enabled))
 
