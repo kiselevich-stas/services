@@ -129,22 +129,6 @@ const socialLinks = computed(() => {
               {{ team.stage }}
             </span>
           </div>
-
-<!--          <div-->
-<!--              v-if="socialLinks.length"-->
-<!--              class="team-hero__socials"-->
-<!--          >-->
-<!--            <a-->
-<!--                v-for="social in socialLinks"-->
-<!--                :key="social.key"-->
-<!--                :href="social.url"-->
-<!--                target="_blank"-->
-<!--                rel="noopener noreferrer"-->
-<!--                class="team-hero__social-link"-->
-<!--            >-->
-<!--              {{ social.label }}-->
-<!--            </a>-->
-<!--          </div>-->
         </div>
       </div>
 
@@ -155,11 +139,6 @@ const socialLinks = computed(() => {
           </UiButton>
         </RouterLink>
 
-        <RouterLink to="/hockey">
-          <UiButton>
-            К матчам
-          </UiButton>
-        </RouterLink>
       </div>
     </template>
   </header>

@@ -20,9 +20,6 @@ defineProps<{
         </p>
       </div>
 
-      <RouterLink to="/hockey" class="section-card__link">
-        Всё расписание
-      </RouterLink>
     </div>
 
     <div v-if="isLoading && !items.length" class="upcoming-grid">

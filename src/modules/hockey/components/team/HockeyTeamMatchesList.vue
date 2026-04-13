@@ -56,12 +56,6 @@ const formatMatchDate = (value?: number | string | null) => {
         </p>
       </div>
 
-      <RouterLink
-          to="/hockey"
-          class="section-card__link"
-      >
-        Всё расписание
-      </RouterLink>
     </div>
 
     <div

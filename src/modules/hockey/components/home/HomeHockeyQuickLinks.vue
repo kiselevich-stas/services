@@ -11,13 +11,6 @@ type QuickLinkItem = {
 
 const quickLinks: QuickLinkItem[] = [
   {
-    to: '/hockey',
-    label: 'Матчи',
-    title: 'Ближайшие встречи',
-    description: 'Полное расписание, карточки матчей и страница конкретной игры.',
-    modifier: 'matches',
-  },
-  {
     to: '/hockey/elo',
     label: 'Рейтинг',
     title: 'Elo команд',

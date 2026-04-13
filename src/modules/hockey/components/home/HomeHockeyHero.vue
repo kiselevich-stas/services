@@ -19,11 +19,7 @@ defineProps<{
       </p>
 
       <div class="hero-card__actions">
-        <RouterLink to="/hockey" class="hero-card__button hero-card__button--primary">
-          Открыть все матчи
-        </RouterLink>
-
-        <RouterLink to="/hockey/elo" class="hero-card__button hero-card__button--secondary">
+        <RouterLink to="/hockey/elo" class="hero-card__button hero-card__button--primary">
           Смотреть Elo рейтинг
         </RouterLink>
       </div>
