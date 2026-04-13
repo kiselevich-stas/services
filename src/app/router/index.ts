@@ -15,6 +15,7 @@ import {usePreferencesStore} from "../../stores/preferences.ts";
 import {spacesRoutes} from "../../modules/spaces";
 import {worklogRoutes} from "../../modules/worklog";
 import {hockeyAnalyticsRoutes} from "../../modules/hockey";
+import {vacationRoutes} from "../../modules/vacation";
 
 export const router = createRouter({
     history: createWebHashHistory(),
@@ -25,6 +26,7 @@ export const router = createRouter({
         ...spacesRoutes,
         ...worklogRoutes,
         ...hockeyAnalyticsRoutes,
+        ...vacationRoutes,
 
         {
             path: '/',

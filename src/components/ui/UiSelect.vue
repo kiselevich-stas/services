@@ -273,6 +273,7 @@ onBeforeUnmount(() => {
   top: calc(100% + 8px);
   left: 0;
   z-index: 20;
+  min-width: 280px;
   width: 100%;
   padding: 8px;
   border-radius: 14px;
