@@ -95,15 +95,13 @@
           </div>
 
           <MatchHeadToHeadEloCard
-              v-else
               class="match-card--full"
-              :points="headToHeadEloChart"
-              :summary="headToHeadEloSummary"
-              :splits="headToHeadEloSplits"
-              :recent-matches="headToHeadRecentMatches"
+              :team-a-id="teamAId"
+              :team-b-id="teamBId"
               :team-a-name="matchDetails.teamA?.name"
               :team-b-name="matchDetails.teamB?.name"
-              :is-loading="headToHeadEloLoading || headToHeadEloFetching"
+              :team-a-logo="matchDetails.teamA?.logo"
+              :team-b-logo="matchDetails.teamB?.logo"
           />
 
           <MatchStatsComparison
@@ -242,22 +240,6 @@ const {
   getTeamNameById,
 } = useMatchDetailsView(matchDetails)
 
-const {
-  data: headToHeadEloData,
-  isLoading: headToHeadEloLoading,
-  isFetching: headToHeadEloFetching,
-  isError: headToHeadEloIsError,
-  error: headToHeadEloError,
-} = useMatchHeadToHeadElo(
-    teamAId,
-    teamBId,
-    selectedEloSeasonId,
-)
-
-const headToHeadEloChart = computed(() => headToHeadEloData.value?.chart ?? [])
-const headToHeadEloSummary = computed(() => headToHeadEloData.value?.summary ?? null)
-const headToHeadEloSplits = computed(() => headToHeadEloData.value?.splits ?? null)
-const headToHeadRecentMatches = computed(() => headToHeadEloData.value?.recentMatches ?? [])
 
 const shouldShowEloBlock = computed(() => {
   return matchDetails.value?.gameStateKey !== 'finished'

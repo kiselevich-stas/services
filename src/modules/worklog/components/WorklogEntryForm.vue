@@ -1,12 +1,24 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+
 import UiButton from '../../../components/ui/UiButton.vue'
+import UiCombobox from '../../../components/ui/UiCombobox.vue'
 import UiInput from '../../../components/ui/UiInput.vue'
 import UiTextarea from '../../../components/ui/UiTextarea.vue'
 
 import { useZodForm } from '../../../shared/composables/useZodForm'
-import { getDefaultWorklogValues, toWorklogPayload, worklogSchema } from '../schema/worklog.schema'
-import type { WorkLog, WorkLogFormValues, WorkLogInsertPayload } from '../types'
+import { useWorklogStore } from '../store/worklog'
+import {
+  getDefaultWorklogValues,
+  toWorklogPayload,
+  worklogSchema,
+} from '../schema/worklog.schema'
+
+import type {
+  WorkLog,
+  WorkLogFormValues,
+  WorkLogInsertPayload,
+} from '../types'
 
 interface Props {
   modelValue?: WorkLog | null
@@ -22,6 +34,8 @@ const emit = defineEmits<{
   submit: [payload: WorkLogInsertPayload]
   cancel: []
 }>()
+
+const worklogStore = useWorklogStore()
 
 const form = ref<WorkLogFormValues>(getDefaultWorklogValues())
 
@@ -60,6 +74,11 @@ function syncForm(value: WorkLog | null): void {
   resetErrors()
 }
 
+function handleProjectChange(value: string): void {
+  form.value.project = value
+  handleInput('project')
+}
+
 function handleSubmit(): void {
   const isValid = validateForm()
 
@@ -95,9 +114,11 @@ watch(
 
     <div class="worklog-card__header">
       <p class="worklog-card__eyebrow">Worklog</p>
+
       <h2 class="worklog-card__title">
         {{ isEditMode ? 'Редактирование записи' : 'Новая запись по времени' }}
       </h2>
+
       <p class="worklog-card__text">
         Добавь рабочие часы по проекту, чтобы видеть красивую статистику и динамику нагрузки.
       </p>
@@ -127,16 +148,15 @@ watch(
           @update:model-value="handleInput('hours')"
       />
 
-      <UiInput
-          v-model="form.project"
+      <UiCombobox
+          :model-value="form.project"
           class="worklog-form__full"
           label="Проект"
-          type="text"
-          required
-          placeholder="Например: Services"
+          placeholder="Выберите существующий или введите новый"
+          :options="worklogStore.projectOptions"
           :error="errors.project"
+          @update:model-value="handleProjectChange"
           @blur="handleBlur('project')"
-          @update:model-value="handleInput('project')"
       />
 
       <UiTextarea
