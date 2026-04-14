@@ -67,7 +67,7 @@ function syncForm(value: WorkLog | null): void {
   form.value = {
     workDate: value.workDate,
     hours: String(value.hours),
-    projectId: value.projectId,
+    project: value.projectName,
     note: value.note ?? '',
   }
 
@@ -75,7 +75,7 @@ function syncForm(value: WorkLog | null): void {
 }
 
 function handleProjectChange(value: string): void {
-  form.value.projectId = value
+  form.value.project = value
 }
 
 function handleSubmit(): void {
@@ -148,14 +148,14 @@ watch(
       />
 
       <UiCombobox
-          :model-value="form.projectId"
+          :model-value="form.project"
           class="worklog-form__full"
           label="Проект"
-          placeholder="Выберите проект"
+          placeholder="Выберите проект или введите новый"
           :options="projectStore.projectOptions"
-          :error="errors.projectId"
+          :error="errors.project"
           @update:model-value="handleProjectChange"
-          @blur="handleBlur('projectId')"
+          @blur="handleBlur('project')"
       />
 
       <UiTextarea

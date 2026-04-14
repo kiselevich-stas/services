@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import {computed, onMounted} from 'vue'
 import { useRouter } from 'vue-router'
 
 import WorklogEntryForm from '../components/WorklogEntryForm.vue'
@@ -8,6 +8,7 @@ import { useWorklogStore } from '../store/worklog'
 import { useProjectStore } from '../store/project'
 
 import type { WorkLogInsertPayload } from '../types'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const router = useRouter()
 
@@ -34,10 +35,19 @@ onMounted(async () => {
     // тост уже показан
   }
 })
+
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Worklog', to: '/worklog' },
+  { label: 'Создание worklog' },
+])
+
 </script>
 
 <template>
   <div class="worklog-create-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <section class="worklog-create-hero">
       <p class="worklog-create-hero__eyebrow">Worklog</p>
       <h1 class="worklog-create-hero__title">Добавить потраченное время</h1>
@@ -48,19 +58,11 @@ onMounted(async () => {
 
     <!-- 👇 важно: ждём загрузку проектов -->
     <WorklogEntryForm
-        v-if="projectStore.projects.length"
         :loading="worklogStore.saving"
         @submit="handleSubmit"
         @cancel="handleCancel"
     />
 
-    <!-- 👇 fallback -->
-    <div v-else class="worklog-empty panel">
-      <p class="worklog-empty__title">Нет проектов</p>
-      <p class="worklog-empty__text">
-        Сначала создай хотя бы один проект, чтобы добавить запись.
-      </p>
-    </div>
   </div>
 </template>
 

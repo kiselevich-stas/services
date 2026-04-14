@@ -6,6 +6,7 @@ import UiInput from '../../../components/ui/UiInput.vue'
 import WorklogDeleteModal from '../components/WorklogDeleteModal.vue'
 import { useWorklogStore } from '../store/worklog'
 import type { WorkLog } from '../types'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const router = useRouter()
 const worklogStore = useWorklogStore()
@@ -114,10 +115,17 @@ function goNextPage(): void {
     currentPage.value += 1
   }
 }
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Worklog', to: '/worklog' },
+  { label: 'История worklog' },
+])
 </script>
 
 <template>
   <div class="worklog-history-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <section class="worklog-history-page__hero">
       <div>
         <p class="worklog-history-page__eyebrow">Worklog</p>

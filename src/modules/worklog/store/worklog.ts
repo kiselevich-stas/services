@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 
+import { useProjectStore } from './project'
+
 import type {
   DayHoursStat,
   ProjectHoursStat,
@@ -406,13 +408,16 @@ export const useWorklogStore = defineStore('worklog', () => {
     saving.value = true
 
     try {
+      const projectStore = useProjectStore()
+      const project = await projectStore.findOrCreateProject(payload.project)
+
       const { data, error } = await supabase
           .from('work_logs')
           .insert({
             user_id: userId,
             work_date: payload.workDate,
             hours: payload.hours,
-            project_id: payload.projectId,
+            project_id: project.id,
             note: payload.note.trim(),
           })
           .select(`
@@ -456,12 +461,15 @@ export const useWorklogStore = defineStore('worklog', () => {
     saving.value = true
 
     try {
+      const projectStore = useProjectStore()
+      const project = await projectStore.findOrCreateProject(payload.project)
+
       const { data, error } = await supabase
           .from('work_logs')
           .update({
             work_date: payload.workDate,
             hours: payload.hours,
-            project_id: payload.projectId,
+            project_id: project.id,
             note: payload.note.trim(),
           })
           .eq('id', payload.id)
@@ -581,7 +589,6 @@ export const useWorklogStore = defineStore('worklog', () => {
     addLog,
     updateLog,
     removeLog,
-
-    todayFocus
+    todayFocus,
   }
 })

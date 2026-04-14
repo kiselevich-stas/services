@@ -16,6 +16,10 @@ export interface ProjectOption {
     value: string
 }
 
+function normalizeProjectName(value: string): string {
+    return value.trim().replace(/\s+/g, ' ')
+}
+
 export const useProjectStore = defineStore('project', () => {
     const authStore = useAuthStore()
 
@@ -23,9 +27,9 @@ export const useProjectStore = defineStore('project', () => {
     const loading = ref(false)
 
     const projectOptions = computed<ProjectOption[]>(() => {
-        return projects.value.map((p) => ({
-            label: p.name,
-            value: p.id,
+        return projects.value.map((project) => ({
+            label: project.name,
+            value: project.id,
         }))
     })
 
@@ -45,12 +49,12 @@ export const useProjectStore = defineStore('project', () => {
 
         if (error) throw error
 
-        projects.value = (data ?? []).map((p) => ({
-            id: p.id,
-            userId: p.user_id,
-            name: p.name,
-            createdAt: p.created_at,
-            updatedAt: p.updated_at,
+        projects.value = (data ?? []).map((project) => ({
+            id: project.id,
+            userId: project.user_id,
+            name: project.name,
+            createdAt: project.created_at,
+            updatedAt: project.updated_at,
         }))
     }
 
@@ -58,11 +62,13 @@ export const useProjectStore = defineStore('project', () => {
         const userId = authStore.user?.id
         if (!userId) throw new Error('No user')
 
+        const normalizedName = normalizeProjectName(name)
+
         const { data, error } = await supabase
             .from('projects')
             .insert({
                 user_id: userId,
-                name,
+                name: normalizedName,
             })
             .select()
             .single()
@@ -82,11 +88,40 @@ export const useProjectStore = defineStore('project', () => {
         return project
     }
 
+    async function findOrCreateProject(projectValue: string): Promise<Project> {
+        const normalizedValue = normalizeProjectName(projectValue)
+
+        if (!normalizedValue) {
+            throw new Error('Project is required')
+        }
+
+        const existingById = projects.value.find(
+            (project) => project.id === normalizedValue,
+        )
+
+        if (existingById) {
+            return existingById
+        }
+
+        const existingByName = projects.value.find(
+            (project) =>
+                normalizeProjectName(project.name).toLocaleLowerCase() ===
+                normalizedValue.toLocaleLowerCase(),
+        )
+
+        if (existingByName) {
+            return existingByName
+        }
+
+        return createProject(normalizedValue)
+    }
+
     return {
         projects,
         loading,
         projectOptions,
         loadProjects,
         createProject,
+        findOrCreateProject,
     }
 })

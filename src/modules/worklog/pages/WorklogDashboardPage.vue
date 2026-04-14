@@ -10,6 +10,7 @@ import WorklogSummaryCards from '../components/WorklogSummaryCards.vue'
 
 import { useProjectStore } from '../store/project'
 import { useWorklogStore } from '../store/worklog'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const worklogStore = useWorklogStore()
 const projectStore = useProjectStore()
@@ -133,10 +134,16 @@ async function handleRemove(id: string): Promise<void> {
   }
 }
 
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Worklog', to: '/worklog' },
+])
+
 </script>
 
 <template>
   <div class="worklog-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <WorklogHeroSection
         :top-project-name="topProjectName"
         :top-project-hours="topProjectHours"

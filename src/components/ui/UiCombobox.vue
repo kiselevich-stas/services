@@ -112,7 +112,7 @@
           </template>
 
           <div v-else class="ui-combobox__empty">
-            Нет доступных проектов
+            Ничего не найдено. Можно использовать своё значение
           </div>
         </div>
       </transition>
@@ -166,11 +166,16 @@ const inputValue = ref('')
 const highlightedIndex = ref(0)
 const blurTimeoutId = ref<number | null>(null)
 
+/**
+ * Если modelValue совпадает с option.value — показываем label.
+ * Если не совпадает ни с одной опцией, считаем, что это произвольный текст,
+ * и показываем его как есть.
+ */
 watch(
     () => props.modelValue,
     (value) => {
       const selectedOption = props.options.find((option) => option.value === value)
-      inputValue.value = selectedOption?.label ?? ''
+      inputValue.value = selectedOption?.label ?? value ?? ''
     },
     { immediate: true },
 )
@@ -250,6 +255,7 @@ function handleInput(event: Event): void {
   const value = target.value
 
   inputValue.value = value
+  emitValue(value)
   openDropdown()
 }
 
@@ -269,22 +275,26 @@ function handleEnter(): void {
     return
   }
 
+  const customValue = inputValue.value.trim()
+  emitValue(customValue)
   closeDropdown()
   emit('blur')
 }
 
 function handleBlur(): void {
   blurTimeoutId.value = window.setTimeout(() => {
+    const normalizedInput = inputValue.value.trim()
+
     const selectedOption = props.options.find(
-        (option) => option.label.toLocaleLowerCase() === inputValue.value.trim().toLocaleLowerCase(),
+        (option) => option.label.toLocaleLowerCase() === normalizedInput.toLocaleLowerCase(),
     )
 
     if (selectedOption) {
       inputValue.value = selectedOption.label
       emitValue(selectedOption.value)
     } else {
-      const currentOption = props.options.find((option) => option.value === props.modelValue)
-      inputValue.value = currentOption?.label ?? ''
+      emitValue(normalizedInput)
+      inputValue.value = normalizedInput
     }
 
     closeDropdown()
@@ -328,8 +338,18 @@ function handleClickOutside(event: MouseEvent): void {
   if (!rootRef.value.contains(target)) {
     clearBlurTimeout()
 
-    const currentOption = props.options.find((option) => option.value === props.modelValue)
-    inputValue.value = currentOption?.label ?? ''
+    const normalizedInput = inputValue.value.trim()
+    const selectedOption = props.options.find(
+        (option) => option.label.toLocaleLowerCase() === normalizedInput.toLocaleLowerCase(),
+    )
+
+    if (selectedOption) {
+      inputValue.value = selectedOption.label
+      emitValue(selectedOption.value)
+    } else {
+      inputValue.value = normalizedInput
+      emitValue(normalizedInput)
+    }
 
     closeDropdown()
     emit('blur')

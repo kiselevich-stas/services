@@ -8,6 +8,7 @@ import { useProjectStore } from '../store/project'
 import { useWorklogStore } from '../store/worklog'
 
 import type { WorkLogInsertPayload } from '../types'
+import UiBreadcrumbs from "../../../components/ui/breadcrumbs/UiBreadcrumbs.vue";
 
 const route = useRoute()
 const router = useRouter()
@@ -66,10 +67,18 @@ async function handleSubmit(payload: WorkLogInsertPayload): Promise<void> {
 async function handleCancel(): Promise<void> {
   await router.push('/worklog')
 }
+
+const breadcrumbs = computed(() => [
+  { label: 'Главная', to: '/' },
+  { label: 'Worklog', to: '/worklog' },
+  { label: 'Изменение worklog' },
+])
+
 </script>
 
 <template>
   <div class="worklog-edit-page">
+    <UiBreadcrumbs :items="breadcrumbs" />
     <section class="worklog-edit-hero">
       <p class="worklog-edit-hero__eyebrow">Worklog</p>
 

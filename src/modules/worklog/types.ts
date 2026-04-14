@@ -30,19 +30,23 @@ export interface WorkLog {
 export interface WorkLogFormValues {
   workDate: string
   hours: string
-  projectId: string
+  project: string
   note: string
 }
 
 export interface WorkLogInsertPayload {
   workDate: string
   hours: number
-  projectId: string
+  project: string
   note: string
 }
 
-export interface WorkLogUpdatePayload extends WorkLogInsertPayload {
+export interface WorkLogUpdatePayload {
   id: string
+  workDate: string
+  hours: number
+  project: string
+  note: string
 }
 
 export interface DayHoursStat {
